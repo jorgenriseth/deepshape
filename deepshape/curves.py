@@ -1,6 +1,21 @@
 import torch
 import torch.nn as nn
 
+from numpy import pi
+
+
+class Diffeomorphism(nn.Module):
+    def __init__(self, f):
+        super(Diffeomorphism, self).__init__()
+        self.f = f
+    
+    def forward(self, x):
+        return self.f(x)
+    
+    def derivative(self, x, h=1e-3):
+        return 0.5 * (self(x+h) - self(x-h)) / h
+
+
 class Curve(nn.Module):
     """ Define a torch-compatible parametrized curve class, with finite
     difference approximation of derivatives, and composition operator. """
@@ -15,9 +30,8 @@ class Curve(nn.Module):
         """ Finite difference approximation of curve velocity. """
         return 0.5 * torch.cat([ci(X + h) - ci(X - h) for ci in self.C], dim=-1) / h
     
-    def compose(self, f):
+    def compose(self, f: Diffeomorphism):
         """ Composition from right with a map f: R -> R """
-        # TODO: Create a Difffeomorphism class, and add type hinting.
         # TODO: Allow genereal dimension curves.
         return Curve((lambda x: self.C[0](f(x)), lambda x: self.C[1](f(x))))
 
@@ -31,3 +45,18 @@ class Qmap(nn.Module):
         
     def forward(self, X, h=1e-4):
         return torch.sqrt(self.c.derivative(X, h=h).norm(dim=-1, keepdim=True)) * self.c(X)
+
+
+""" Below is a couple of example curves adn diffeomorphism for testing the 
+reparametrization algorithm."""
+Circle = Curve((
+    lambda x: torch.cos(2*pi*x),
+    lambda x: torch.sin(2*pi*x)
+))
+
+QuadDiff = Diffeomorphism(lambda x: 0.9 * x**2 + 0.1 * x)
+
+LogStepDiff = Diffeomorphism(
+    lambda x: (0.5 * torch.log(20*x+1) / torch.log(21*torch.ones(1)) 
+    + 0.25 * (1 + torch.tanh(20*(x-0.5)) / torch.tanh(21*torch.ones(1))))
+)

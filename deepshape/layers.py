@@ -7,8 +7,9 @@ from numpy import pi
 
 # Define a Fourier Sine Layer    
 class FourierLayer1D(nn.Module):
-    def __init__(self, N, init_scale=1.):
+    def __init__(self, N, init_scale=0.):
         super(FourierLayer1D, self).__init__()
+        self.N = N
         self.nvec = torch.arange(1, N+1)
         self.weights = torch.nn.Parameter(
             init_scale * torch.rand(N, 1, requires_grad=True)
@@ -23,13 +24,20 @@ class FourierLayer1D(nn.Module):
         self.ymin = torch.min(y).item()
         return x + z @ self.weights, 1. + y @ self.weights
 
-    def find_ymin(self, npoints=200):
+    def find_ymin(self, npoints=1024):
         x = torch.linspace(0, 1, npoints).unsqueeze(-1)
+        self.K = npoints
+        
         _, y = self.forward(x)
         self.ymin = torch.min(y).item()
         return self.ymin
     
-    def project(self, epsilon=1e-4):
+    def project(self, npoints=1024, epsilon=None):
+        self.find_ymin(npoints)
+
+        if epsilon is None:
+            epsilon = torch.norm(self.weights, 1) * self.N**3 / (8 * self.K)
+            
         with torch.no_grad():
             if self.ymin < epsilon:
                 self.weights *= 1 / (1 + epsilon - self.ymin)
@@ -53,7 +61,7 @@ class FourierLayer2D(nn.Module):
         self.N = 2 * n**2 + n
         
         # Upsampler required in forward pass
-        self.upsample = nn.Upsample(scale_factor=n, mode='nearest')s
+        self.upsample = nn.Upsample(scale_factor=n, mode='nearest')
 
         # Create weight vector
         self.weights = torch.nn.Parameter(

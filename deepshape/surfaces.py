@@ -40,7 +40,7 @@ class Qmap(nn.Module):
     def forward(self, X, h=1e-3):
         return torch.sqrt(self.s.volume_factor(X, h)) * self.s(X)
 
-    
+
 class Diffeomorphism(nn.Module):
     def __init__(self, component_function_tuple):
         super(Diffeomorphism, self).__init__()
