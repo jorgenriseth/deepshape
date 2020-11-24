@@ -10,7 +10,6 @@ class FourierLayer1D(nn.Module):
     def __init__(self, N, init_scale=1.):
         super(FourierLayer1D, self).__init__()
         self.nvec = torch.arange(1, N+1)
-        
         self.weights = torch.nn.Parameter(
             init_scale * torch.rand(N, 1, requires_grad=True)
         )
@@ -21,18 +20,14 @@ class FourierLayer1D(nn.Module):
         z = np.pi * self.nvec * x
         y = np.pi * self.nvec * torch.cos(z)
         z = torch.sin(z)
-        
         self.ymin = torch.min(y).item()
-            
         return x + z @ self.weights, 1. + y @ self.weights
-    
-    
+
     def find_ymin(self, npoints=200):
         x = torch.linspace(0, 1, npoints).unsqueeze(-1)
         _, y = self.forward(x)
         self.ymin = torch.min(y).item()
         return self.ymin
-    
     
     def project(self, epsilon=1e-4):
         with torch.no_grad():
@@ -51,21 +46,19 @@ class FourierLayer2D(nn.Module):
     """
     def __init__(self, n, init_scale=0.):
         super(FourierLayer2D, self).__init__()
-        
+
         # Basis Size related numbers
         self.nvec = torch.arange(1, n+1)
         self.n = n
         self.N = 2 * n**2 + n
         
         # Upsampler required in forward pass
-        self.upsample = nn.Upsample(scale_factor=n, mode='nearest')
-        
-        
+        self.upsample = nn.Upsample(scale_factor=n, mode='nearest')s
+
         # Create weight vector
         self.weights = torch.nn.Parameter(
             init_scale * torch.randn(2*self.N, requires_grad=True)
         )
-        
         # Ensure positive determinant. 
         self.project()
     
@@ -100,14 +93,12 @@ class FourierLayer2D(nn.Module):
         B[:, 0, (n+n**2):N] = T3[:, 0, :]  # Type 3 x-direction
         B[:, 1, (N+n+n**2):] = T3[:, 1, :]  # Type3 y-direction
         
-        
         # Now for derivative matrices
         T11 = self.upsample(self.nvec * pi * C1) * S2.repeat(1, 1, n)
         T12 = self.upsample(S1) * (2 * pi * self.nvec * C2).repeat(1, 1, n)
         
         T21 = self.upsample(self.nvec * pi * C1) * C2.repeat(1, 1, n)
         T22 = self.upsample(S1) * (-2 * pi * self.nvec * S2).repeat(1, 1, n)
-
         
         # Create and fill a tensor with derivative outputs
         D = torch.zeros(K, 2, 2, 2*N)
