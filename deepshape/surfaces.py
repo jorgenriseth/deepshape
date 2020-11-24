@@ -2,6 +2,20 @@ import torch
 import torch.nn as nn
 
 
+class Diffeomorphism(nn.Module):
+    def __init__(self, component_function_tuple):
+        super(Diffeomorphism, self).__init__()
+        self.S = tuple(component_function_tuple)
+        
+    def forward(self, X):
+        out = torch.zeros_like(X)
+        out[..., 0] = self.S[0](X)
+        out[..., 1] = self.S[1](X)
+        return out
+
+    # TODO: Add Volume factor, for easier comparisons.
+
+
 class Surface(nn.Module):
     """ Torch-compatible surface class. Constructed from a tuple of functions,
     mapping tensor of dim (..., 2) to R^len(tuple) """
@@ -39,12 +53,3 @@ class Qmap(nn.Module):
         
     def forward(self, X, h=1e-3):
         return torch.sqrt(self.s.volume_factor(X, h)) * self.s(X)
-
-
-class Diffeomorphism(nn.Module):
-    def __init__(self, component_function_tuple):
-        super(Diffeomorphism, self).__init__()
-        self.S = tuple(component_function_tuple)
-        
-    def forward(self, X):
-        return torch.cat([ci(X).unsqueeze(dim=-1) for ci in self.S], dim=-1)
