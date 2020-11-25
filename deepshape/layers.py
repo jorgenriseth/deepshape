@@ -8,7 +8,7 @@ from numpy import pi
 # Define a Fourier Sine Layer    
 class FourierLayer1D(nn.Module):
     def __init__(self, N, init_scale=0.):
-        super(FourierLayer1D, self).__init__()
+        super().__init__()
         self.N = N
         self.nvec = torch.arange(1, N+1)
         self.weights = torch.nn.Parameter(
@@ -43,6 +43,14 @@ class FourierLayer1D(nn.Module):
                 self.weights *= 1 / (1 + epsilon - self.ymin)
 
 
+def batch_quadratic(tr, det, epsilon=1e-4):
+    return -(tr + torch.sqrt(tr**2 - 4 * det * (1 - epsilon))) / (2*det)
+
+
+def batch_linear(tr, det, epsilon=1e-4):
+    return -1. / torch.minimum(torch.ones_like(tr), tr - epsilon)
+
+
 class FourierLayer2D(nn.Module):
     """ Implements a Fourier Basis Series layer for 2D diffeomorphisms. 
     Includes basis functions of the form
@@ -53,7 +61,7 @@ class FourierLayer2D(nn.Module):
     arguments, (x, y) -> (y, x), in the second component.
     """
     def __init__(self, n, init_scale=0.):
-        super(FourierLayer2D, self).__init__()
+        super().__init__()
 
         # Basis Size related numbers
         self.nvec = torch.arange(1, n+1)
@@ -68,7 +76,7 @@ class FourierLayer2D(nn.Module):
             init_scale * torch.randn(2*self.N, requires_grad=True)
         )
         # Ensure positive determinant. 
-        self.project()
+        #self.project()
     
     
     def forward(self, x):
@@ -125,18 +133,38 @@ class FourierLayer2D(nn.Module):
         D[:, 1, 1, (N+n+n**2):] = T21[:, 1, :]  # Type 3 y-direction dy
         D[:, 1, 0, (N+n+n**2):] = T22[:, 1, :]  # Type 3 y-direction dx 
         
+        # Add a batch-size identity matrix
         I = torch.eye(2).view(1, 2, 2).repeat(K, 1, 1)
-        return x + (B @ self.weights), batch_determinant(I + D @ self.weights)
+
+        # Store trace and determinant for projection.
+        A = D @ self.weights
+        self.traceD = batch_trace(A)
+        self.detD = batch_determinant(A)
+
+        return x + (B @ self.weights), batch_determinant(I + A)
         
-    def project(self):
-        pass
+    def project(self, epsilon=1e-8, delta=1e-3):
+        #  TODO: Split into multiple functions
+        with torch.no_grad(): 
+            # Compute the smallest root in projection polynomial.
+            Q = torch.where(
+                torch.abs(self.detD) < delta,  # If satisfied...
+                1/(epsilon - self.traceD),  # Set to,
+                batch_quadratic(self.traceD, self.detD, epsilon)  # else, set to
+            )
+            Q = torch.where(torch.isnan(Q), torch.ones_like(Q), Q)  # Remove complex roots
+            Q = torch.where(Q <= 0., torch.ones_like(Q), Q)  # Remove negative roots 
+            Q = torch.where(Q >= 1., torch.ones_like(Q), Q)  # Remove roots larger than 1.
+            k = Q.min().item()  # Extract smallest root.
+            if k < 1.:
+                self.weights *= (1 - 1e-8 )*k  # Scale weights (with numeric stabilizer)
 
 
 def batch_determinant(B):
     assert B.dim() == 3, f"Dim.shape should be (K, 2, 2), got {B.shape}"
-    return B[:, 0, 0] * B[:, 1, 1] - B[:, 1, 0] * B[:, 0, 1]
+    return (B[:, 0, 0] * B[:, 1, 1] - B[:, 1, 0] * B[:, 0, 1]).view(-1, 1)
 
 
 def batch_trace(B):
     assert B.dim() == 3, f"Dim.shape should be (K, 2, 2), got {B.shape}"
-    return B[:, 0, 0] + B[:, 1, 1]
+    return (B[:, 0, 0] + B[:, 1, 1]).view(-1, 1)

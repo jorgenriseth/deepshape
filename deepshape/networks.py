@@ -24,7 +24,7 @@ class ReparametrizationNetwork2D(nn.Module):
     
     def reparametrized(self, r, X):
         Z, J = self(X)
-        return torch.sqrt(J.view(-1, 1)) * r(Z)
+        return torch.sqrt(J) * r(Z)
 
 
     def train(self, q, r, optimizer, loss=nn.MSELoss(), nxpoints=32,
@@ -44,7 +44,9 @@ class ReparametrizationNetwork2D(nn.Module):
             optimizer.zero_grad()
             
             # Find current reparametrized Q-maps
-            # Z, J = RN(X)  # Forward Pass
+            Z, J = self(X)  # Forward Pass
+            if J.min().item() < 0.:
+                print("J min: ", J.min().item())
             Q = q(X)
             R = self.reparametrized(r, X)
             
@@ -53,7 +55,12 @@ class ReparametrizationNetwork2D(nn.Module):
             l.backward()
             optimizer.step()
 
-            if i % 10 == 0:
+            with torch.no_grad():
+                for layer in self.layers:
+                    _, _ = layer(X)
+                    layer.project()
+
+            if i % 1 == 0:
                 print('[Iter %5d] loss: %.5f' %
                     (i + 1, l))
                 
