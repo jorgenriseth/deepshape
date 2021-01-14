@@ -12,7 +12,7 @@ class FourierLayer1D(nn.Module):
         self.N = N
         self.nvec = torch.arange(1, N+1)
         self.weights = torch.nn.Parameter(
-            init_scale * torch.rand(N, 1, requires_grad=True)
+            init_scale * torch.randn(N, 1, requires_grad=True)
         )
         self.find_ymin()
         self.project()
@@ -43,12 +43,20 @@ class FourierLayer1D(nn.Module):
                 self.weights *= 1 / (1 + epsilon - self.ymin)
 
 
-def batch_quadratic(tr, det, epsilon=1e-4):
-    return -(tr + torch.sqrt(tr**2 - 4 * det * (1 - epsilon))) / (2*det)
+def batch_quadratic(tr, det, epsilon):
+    return torch.where(
+        torch.logical_or(det < 0, tr <= - 2 * torch.sqrt(det * (1 - epsilon))),
+        (- tr - torch.sqrt(tr**2 - (4 * det * (1 - epsilon)))) / (2 * det),
+        torch.ones_like(tr)
+    )
 
 
-def batch_linear(tr, det, epsilon=1e-4):
-    return -1. / torch.minimum(torch.ones_like(tr), tr - epsilon)
+def batch_linear(tr, epsilon):
+    return torch.where(
+        tr >= - (1 - epsilon),
+        torch.Tensor([1.]),
+        - (1 - epsilon) / tr
+    )
 
 
 class FourierLayer2D(nn.Module):
@@ -143,21 +151,21 @@ class FourierLayer2D(nn.Module):
 
         return x + (B @ self.weights), batch_determinant(I + A)
         
-    def project(self, epsilon=1e-8, delta=1e-3):
-        #  TODO: Split into multiple functions
-        with torch.no_grad(): 
+    def project(self, X, epsilon, delta):
+       # epsilon = torch.norm(self.weights, 1) * self.n**3 / (8 * 64)
+        with torch.no_grad():
+            Z, J = self(X)
+
             # Compute the smallest root in projection polynomial.
             Q = torch.where(
-                torch.abs(self.detD) < delta,  # If satisfied...
-                1/(epsilon - self.traceD),  # Set to,
+                torch.abs(self.detD) < delta,  # Polynomial approximately linear
+                batch_linear(self.traceD, epsilon + delta),
                 batch_quadratic(self.traceD, self.detD, epsilon)  # else, set to
             )
-            Q = torch.where(torch.isnan(Q), torch.ones_like(Q), Q)  # Remove complex roots
-            Q = torch.where(Q <= 0., torch.ones_like(Q), Q)  # Remove negative roots 
-            Q = torch.where(Q >= 1., torch.ones_like(Q), Q)  # Remove roots larger than 1.
             k = Q.min().item()  # Extract smallest root.
             if k < 1.:
-                self.weights *= (1 - 1e-8 )*k  # Scale weights (with numeric stabilizer)
+                self.weights *= k # Scale weights
+
 
 
 def batch_determinant(B):
