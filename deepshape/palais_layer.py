@@ -6,7 +6,7 @@ from numpy import pi
 
 
 # Define a Fourier Sine Layer    
-class FourierLayer1D(nn.Module):
+class PalaisLayer1D(nn.Module):
     def __init__(self, N, init_scale=0.):
         super().__init__()
         self.N = N
@@ -19,8 +19,8 @@ class FourierLayer1D(nn.Module):
         
     def forward(self, x):
         z = np.pi * self.nvec * x
-        y = np.pi * self.nvec * torch.cos(z)
-        z = torch.sin(z)
+        y = np.pi * torch.cos(z)
+        z = torch.sin(z) / self.nvec
         self.ymin = torch.min(y).item()
         return x + z @ self.weights, 1. + y @ self.weights
 
@@ -32,18 +32,17 @@ class FourierLayer1D(nn.Module):
         self.ymin = torch.min(y).item()
         return self.ymin
     
-    def project(self, npoints=1024, epsilon=None, stabilizer=1e-4):
+    def project(self, npoints=1024, epsilon=None):
         self.find_ymin(npoints)
 
         if epsilon is None:
-            # epsilon = torch.norm(self.weights, 1) * self.N**2 / (8 * self.K)
-            epsilon = stabilizer + self.weights.norm(1) * ( 0.5 * self.N * np.pi / npoints)**3
+            epsilon = torch.norm(self.weights, 1) * self.N**2 / (8 * self.K)
             
         with torch.no_grad():
             if self.ymin < epsilon:
                 self.weights *= 1 / (1 + epsilon - self.ymin)
-                if torch.isnan(self.weights).any():
-                    print("Hei")
+
+
 
 
 def batch_quadratic(tr, det, epsilon):
@@ -62,12 +61,12 @@ def batch_linear(tr, epsilon):
     )
 
 
-class FourierLayer2D(nn.Module):
+class PalaisLayer2D(nn.Module):
     """ Implements a Fourier Basis Series layer for 2D diffeomorphisms. 
     Includes basis functions of the form
-        sin(n * pi * x)
-        sin(n * pi * x) * sin(2 * pi * y)
-        sin(n * pi * x) * cos(2 * pi * y)
+        sin(n * pi * x) / n
+        sin(n * pi * x) * sin(2 * m * pi * y) / (nm) #TODO: Chek correctness of implementation
+        sin(n * pi * x) * cos(2 * m * pi * y) / (nm)
     in the first component, as well as the same functions with swithced 
     arguments, (x, y) -> (y, x), in the second component.
     """
@@ -97,12 +96,12 @@ class FourierLayer2D(nn.Module):
         z = (x.view(K, 2, 1) * self.nvec)
         
         # Sine matrices
-        S1 = torch.sin(pi * z)
-        S2 = torch.sin(2 * pi * z)[:, (1, 0), :]
+        S1 = torch.sin(pi * z) / self.nvec
+        S2 = torch.sin(2 * pi * z)[:, (1, 0), :] / self.nvec
         
         # Cosine matrices
-        C1 = torch.cos(pi * z)
-        C2 = torch.cos(2 * pi * z)[:, (1, 0), :]
+        C1 = torch.cos(pi * z) / self.nvec
+        C2 = torch.cos(2 * pi * z)[:, (1, 0), :] / self.nvec
         
         # Tensor product matrices.
         T2 = self.upsample(S1) * S2.repeat(1, 1, n)
