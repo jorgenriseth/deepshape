@@ -13,8 +13,6 @@ class Diffeomorphism(nn.Module):
         out[..., 1] = self.S[1](X)
         return out
 
-    # TODO: Add Volume factor, for easier comparisons.
-
 
 class Surface(nn.Module):
     """ Torch-compatible surface class. Constructed from a tuple of functions,
