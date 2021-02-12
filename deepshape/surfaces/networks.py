@@ -3,10 +3,11 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from layers import FourierLayer1D, FourierLayer2D
+from surfaces.layers import FourierLayer
+
 
 class ReparametrizationNetwork2D(nn.Module):
-    def __init__(self, L, N, init_scale=0.0):
+    def __init__(self, L, N, init_scale=0.0, layer_type=FourierLayer):
         # Convert N to list of length N (if not already there)
         if type(N) == int:
             N = [N for _ in range(L)]
@@ -14,7 +15,7 @@ class ReparametrizationNetwork2D(nn.Module):
         
         # Init list of layers
         super().__init__()
-        self.layers = nn.ModuleList([FourierLayer2D(N[l], init_scale=init_scale) for l in range(L)])
+        self.layers = nn.ModuleList([layer_type(N[l], init_scale=init_scale) for l in range(L)])
         
     def forward(self, X):
         Z, J = X, 1.
@@ -27,9 +28,10 @@ class ReparametrizationNetwork2D(nn.Module):
         Z, J = self(X)
         return torch.sqrt(J) * r(Z)
 
-
     def train(self, q, r, optimizer, loss=nn.MSELoss(), nxpoints=32,
         iterations=300, printiter=20, epsilon=5e-1, delta=1e-6):
+        """ General training method for for surface reparametrization
+        with most pytorch optimizers not requiiring closures."""
         tic = time.time()
 
         # Create Datapoints
@@ -48,7 +50,7 @@ class ReparametrizationNetwork2D(nn.Module):
         Q = q(X)
         R = self.reparametrized(r, X)
         error[0] = loss(R, Q)
-        
+
         for i in range(iterations):    
             # Set gradient buffers to zero.
             optimizer.zero_grad()
@@ -73,7 +75,7 @@ class ReparametrizationNetwork2D(nn.Module):
                 print('[Iter %5d] loss: %.5f' %
                     (i + 1, l))
 
-                        # Find current reparametrized Q-maps
+            # Find current reparametrized Q-maps
             Z, J = self(X)  # Forward Pass
             if J.min().item() < 0.:
                 ind = J.argmin().item()
@@ -87,74 +89,68 @@ class ReparametrizationNetwork2D(nn.Module):
         return error
 
 
-class ReparametrizationNetwork1D(nn.Module):
-    def __init__(self, L, N, init_scale=0.0):
-        # Convert N to list of length N (if not already there)
-        if type(N) == int:
-            N = [N for _ in range(L)]
-        assert len(N) == L, "N should be of length L (or a single number) "
-        
-        # Init list of layers
-        super().__init__()
-        self.layers = nn.ModuleList([FourierLayer1D(N[l], init_scale=init_scale) for l in range(L)])
-        
-    def forward(self, X):
-        Z, Y = X, torch.ones_like(X)
-        for l in self.layers:
-            Z, Y0 = l(Z)
-            Y *= Y0
-        return Z, Y
-    
-    def reparametrized(self, r, X):
-        Z, Y = self(X)
-        return torch.sqrt(Y) * r(Z)
-
-
-
-def train(q, r, network, optimizer, loss=nn.MSELoss(), npoints=1024,
-         iterations=300, epsilon=None, log_every=10):
+def train_bfgs(q, r, network, optimizer, iterations=1, 
+        scheduler=None, loss=nn.MSELoss(), npoints=32, epsilon=None, log_every=10):
+    """ Function for training a reparametrization network for surfaces using the LBFGS 
+    optimizer """
     tic = time.time()
+
+    # Get max iterations from optimizer
+    max_iter = optimizer.defaults["max_iter"]
     
-    # Initialize node placement
-    x = torch.linspace(0, 1, npoints).unsqueeze(-1)
+    # Create Datapoints
+    k = npoints
+    K = npoints**2
+    X, Y = torch.meshgrid((torch.linspace(0, 1, k), torch.linspace(0, 1, k)))
+    X, Y = X.reshape(-1, 1), Y.reshape(-1, 1)
+    X = torch.cat((X, Y), dim=1)
     
     # Evaluate initial error
-    error = np.empty(iterations+1)
-    error.fill(np.nan)
-    Z, Y = network(x)
-    Q = q(x)
-    R = network.reparametrized(r, x)
-    error[0] = loss(R, Q)
+    errors = np.empty(max_iter * (iterations + 1))
+    errors[:] = np.nan
+    Z, Y = network(X)
+    Q = q(X)
+    R = network.reparametrized(r, X)
+    errors[0] = loss(R, Q) * 3  # Multiply by 3 (dimension of points)
 
+    # Start Training 
+    for i in range(iterations):
+        print("Iteration i")
+        inner = [0]
+        
+        def closure():
+            # Set gradient buffers to` zero.
+            optimizer.zero_grad()
+            
+            with torch.no_grad():
+                Z = X
+                for layer in network.layers:
+                    layer.project(Z, 1e-3, 1e-3)
+                    Z, _ = layer(Z)
 
-    for i in range(iterations):   
-        x = torch.linspace(0, 1, npoints).unsqueeze(-1)
+            Q = q(X)
+            R = network.reparametrized(r, X)
 
-        # Set gradient buffers to zero.
-        optimizer.zero_grad()
+            # Compute loss, and perform a backward pass and gradient step
+            l = loss(Q, R) * 3
+            l.backward()
 
-        # Find current reparametrized Q-maps
-        Z, Y = network(x)
-        Q = q(x)
-        R = network.reparametrized(r, x)
+            if scheduler:
+                scheduler.step(l)
+            
+            j = i * max_iter + inner[0]
+            errors[j] = l.item()
+            inner[0] += 1
 
-        # Compute loss, and perform a backward pass and gradient step
-        l = loss(R, Q)
-        l.backward()
-        optimizer.step()
-        error[i+1] = l.item()
-
-        # Projection step
-        with torch.no_grad():
-            for layer in network.layers:
-                layer.project(npoints, epsilon=epsilon)
-
-        if log_every > 0 and i % log_every == 0:
-            print('[Iter %5d] loss: %.5f' %
-                  (i + 1, l))
-
+            
+            print('[Iter %5d] loss: %.8f' % (j, l))
+            return l
+        
+        optimizer.step(closure)
+                
     toc = time.time()
-
     print()
     print(f'Finished training in {toc - tic:.5f}s')
-    return error
+
+    j = i * max_iter + inner[0]
+    return errors[:j]

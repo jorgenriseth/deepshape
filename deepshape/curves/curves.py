@@ -49,6 +49,7 @@ class Qmap(nn.Module):
     def forward(self, X, h=1e-4):
         return torch.sqrt(self.c.derivative(X, h=h).norm(dim=-1, keepdim=True)) * self.c(X)
 
+
 class SRVT(nn.Module):
     """ SRVT of curves """
     def __init__(self, curve: Curve):
@@ -59,7 +60,7 @@ class SRVT(nn.Module):
         return torch.sqrt(self.c.derivative(X, h=h).norm(dim=-1, keepdim=True)) * self.c.derivative(X, h=h)
 
 
-""" Below is a couple of example curves adn diffeomorphism for testing the 
+""" Below is a couple of example curves ann diffeomorphism for testing the 
 reparametrization algorithm."""
 Circle = Curve((
     lambda x: torch.cos(2*pi*x),
