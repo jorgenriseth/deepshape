@@ -1,2 +1,2 @@
 # Remap notebooks to python in language statistics
-notebooks/*.ipynb linguist-language=Python
+example-notebooks/*.ipynb linguist-language=Python
