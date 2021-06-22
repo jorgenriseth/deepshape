@@ -9,6 +9,13 @@ To replicate environment
 conda env create -f environment.yml
 ```
 
+To install deepshape for development
+```
+pip install -e .
+```
+where pip may be installed through conda.
+
+
 See the following notebooks for example usage.
 1. [Curve Reparametrization](example-notebooks/curves-reparametrization.ipynb)
 2. [Surface Reparametrization](example-notebooks/surfaces-reparametrization.ipynb)
