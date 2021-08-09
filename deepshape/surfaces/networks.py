@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from surfaces.layers import FourierLayer
+from .layers import FourierLayer
 
 
 class ReparametrizationNetwork2D(nn.Module):
