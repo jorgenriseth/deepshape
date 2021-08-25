@@ -24,7 +24,6 @@ class  FourierApprox(nn.Module):
         return torch.mm(B, self.w)
 
     def approx(self, x, y):
-        self.check_input(y)
         B = self.eval_basis(x)
         w = np.linalg.solve(torch.mm(B.t(), B).numpy(),
                             torch.mm(B.t(), y).numpy())
@@ -32,5 +31,5 @@ class  FourierApprox(nn.Module):
 
     def check_input(self, y):
         if not (y.dim() == 2 and y.size()[1] == 1):
-            raise ValueError("y should be 2D-Tensor on format (npoints, 1)")
+            raise ValueError("y should be 2D-Tensor")
 
