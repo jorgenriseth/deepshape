@@ -1,9 +1,10 @@
 import torch
 import numpy as np
 import torch.nn as nn
+from .surfaces import Surface
 
 class ImageInterpolator(nn.Module):
-    def __init__(self, img, **kwargs):
+    def __init__(self, img, mode="bilinear", **kwargs):
         """ Assumes img of shape (C, H, W)"""
         super().__init__(**kwargs)
         if img.dim() == 2:
@@ -15,6 +16,8 @@ class ImageInterpolator(nn.Module):
             self.C, self.H, self.W = img.shape
         else:
             raise ValueError(f"img should be of shape (C, H, W) or (H, W), got {img.shape}")
+
+        self.mode = mode
     
     def forward(self, x):
         if x.dim() == 2:
@@ -33,7 +36,7 @@ class ImageInterpolator(nn.Module):
         X = x.view(1, H, H , 2)
         X = X * 2. - 1.
         
-        out = nn.functional.grid_sample(self.img, X, mode="bilinear",
+        out = nn.functional.grid_sample(self.img, X, mode=self.mode,
                                         align_corners=True, padding_mode="border")
         # Reshape output (C, H, H) -> (H * H, C)
         return out.view(self.C, npoints).transpose(1, 0).squeeze()
@@ -47,7 +50,13 @@ class ImageInterpolator(nn.Module):
         X = X * 2. - 1. 
         
         # Interpolate, and reshape output to input-form
-        out = nn.functional.grid_sample(self.img, X, mode="bilinear",
+        out = nn.functional.grid_sample(self.img, X, mode=self.mode,
                                         align_corners=True, padding_mode="border")
 
-        return out.view(self.C, *x[..., 0].shape).permute(1, 2, 0)
+        return out.view(self.C, *x[..., 0].shape).permute(1, 2, 0).squeeze()
+
+
+class SingleChannelImageSurface(Surface):
+    def __init__(self, img, **kwargs):
+        super().__init__((lambda x: x[..., 0], lambda x: x[..., 1], lambda x: self.img(x)))
+        self.img = ImageInterpolator(img)
