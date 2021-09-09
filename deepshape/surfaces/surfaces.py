@@ -30,9 +30,12 @@ class Surface(nn.Module):
         return 0.5 * torch.cat([(ci(X + H) - ci(X - H)).unsqueeze(dim=-1) for ci in self.S], dim=-1) / h
     
     def volume_factor(self, X, h=1e-3):
+        return torch.norm(self.normal_vector(X, h), dim=-1, keepdim=True)
+
+    def normal_vector(self, X, h=1e-4):
         dfx = self.partial_derivative(X, 0, h)
         dfy = self.partial_derivative(X, 1, h)
-        return torch.norm(torch.cross(dfx, dfy, dim=-1), dim=-1, keepdim=True)
+        return torch.cross(dfx, dfy, dim=-1)
     
     def compose(self, f : Diffeomorphism):
         """ Composition from the right, of diffeomorphism class mapping 
@@ -51,3 +54,13 @@ class Qmap(nn.Module):
         
     def forward(self, X, h=1e-3):
         return torch.sqrt(self.s.volume_factor(X, h)) * self.s(X)
+
+
+class SRNF(nn.Module):
+    def __init__(self, surface: Surface):
+        super().__init__()
+        self.s = surface
+
+    def forward(self, X, h=1e-3):
+        n = self.s.normal_vector(X)
+        return torch.sqrt(self.s.volume_factor(X, h)) * n / torch.norm(n, dim=-1, keepdim=True)
