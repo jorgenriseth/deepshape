@@ -18,7 +18,7 @@ class Surface(nn.Module):
     """ Torch-compatible surface class. Constructed from a tuple of functions,
     mapping tensor of dim (..., 2) to R^len(tuple) """
     def __init__(self, component_function_tuple, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         self.S = tuple(component_function_tuple)
     
     def forward(self, X):
