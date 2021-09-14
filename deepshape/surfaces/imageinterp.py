@@ -60,3 +60,13 @@ class SingleChannelImageSurface(Surface):
     def __init__(self, img, **kwargs):
         super().__init__((lambda x: x[..., 0], lambda x: x[..., 1], lambda x: self.img(x)))
         self.img = ImageInterpolator(img)
+
+
+class MultiChannelImageSurface(Surface):
+    def __init__(self, img, mode="bilinear", **kwargs):
+        """ Assumes image input on form (C, H, W)"""
+        super().__init__((
+            ImageInterpolator(img[0], mode, **kwargs),
+            ImageInterpolator(img[1], mode, **kwargs),
+            ImageInterpolator(img[2], mode, **kwargs)
+        ))
