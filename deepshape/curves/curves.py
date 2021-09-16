@@ -67,6 +67,11 @@ Circle = Curve((
     lambda x: torch.sin(2*pi*x)
 ))
 
+Infinity = Curve((
+    lambda x: torch.cos(2*pi*x),
+    lambda x: torch.sin(4*pi*x)
+))
+
 QuadDiff = Diffeomorphism(lambda x: 0.9 * x**2 + 0.1 * x)
 
 LogStepDiff = Diffeomorphism(
