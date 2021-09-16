@@ -6,6 +6,11 @@ import numpy as np
 from .layers import FourierLayer
 
 
+def single_component_mse(inputs, targets, component : int):
+    """ Stored here for now, will probably be moved elsewhere in the future"""
+    return torch.sum((inputs[..., component] - targets[..., component])**2) / inputs[..., component].nelement()
+
+
 class ReparametrizationNetwork2D(nn.Module):
     def __init__(self, L, N, init_scale=0.0, layer_type=FourierLayer):
         # Convert N to list of length N (if not already there)
