@@ -57,7 +57,7 @@ class SRVT(nn.Module):
         self.c = curve
 
     def forward(self, X, h=1e-4):
-        return torch.sqrt(self.c.derivative(X, h=h).norm(dim=-1, keepdim=True)) * self.c.derivative(X, h=h)
+        return self.c.derivative(X, h=h) / torch.sqrt(self.c.derivative(X, h=h).norm(dim=-1, keepdim=True))
 
 
 """ Below is a couple of example curves ann diffeomorphism for testing the 
