@@ -51,6 +51,7 @@ class FourierLayer(nn.Module):
         T2 = self.upsample(S1) * S2.repeat(1, 1, n)
         T3 = self.upsample(S1) * C2.repeat(1, 1, n)
 
+
         # Function output tensor
         B = torch.zeros(K, 2, 2*N)
 
@@ -62,7 +63,26 @@ class FourierLayer(nn.Module):
 
         B[:, 0, (n+n**2):N] = T3[:, 0, :]  # Type 3 x-direction
         B[:, 1, (N+n+n**2):] = T3[:, 1, :]  # Type3 y-direction
+
+        return x + (B @ self.weights)
+
+    def derivative(self, x, h=1e-4):
+        """Assumes input on form (K, 2)"""
+        K = x.shape[0]
+        n, N = self.n, self.N
+        z = (x.view(K, 2, 1) * self.nvec)
         
+        if h is not None:
+            pass
+        
+        # Sine matrices
+        S1 = torch.sin(pi * z)
+        S2 = torch.sin(2 * pi * z)[:, (1, 0), :]
+        
+        # Cosine matrices
+        C1 = torch.cos(pi * z)
+        C2 = torch.cos(2 * pi * z)[:, (1, 0), :]
+
         # Now for derivative matrices
         T11 = self.upsample(self.nvec * pi * C1) * S2.repeat(1, 1, n)
         T12 = self.upsample(S1) * (2 * pi * self.nvec * C2).repeat(1, 1, n)
@@ -86,16 +106,16 @@ class FourierLayer(nn.Module):
 
         D[:, 1, 1, (N+n+n**2):] = T21[:, 1, :]  # Type 3 y-direction dy
         D[:, 1, 0, (N+n+n**2):] = T22[:, 1, :]  # Type 3 y-direction dx 
-        
-        # Add a batch-size identity matrix
-        I = torch.eye(2).view(1, 2, 2).repeat(K, 1, 1)
 
         # Store trace and determinant for projection.
         A = D @ self.weights
         self.traceD = batch_trace(A)
         self.detD = batch_determinant(A)
+        
+        # Add a batch-size identity matrix
+        I = torch.eye(2).view(1, 2, 2).repeat(K, 1, 1)
+        return I + A
 
-        return x + (B @ self.weights), batch_determinant(I + A)
         
     def project(self, X, epsilon, delta):
        # epsilon = torch.norm(self.weights, 1) * self.n**3 / (8 * 64)

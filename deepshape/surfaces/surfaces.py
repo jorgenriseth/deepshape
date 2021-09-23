@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 
 class Diffeomorphism(nn.Module):
@@ -64,3 +65,18 @@ class SRNF(nn.Module):
     def forward(self, X, h=1e-3):
         n = self.s.normal_vector(X)
         return torch.sqrt(self.s.volume_factor(X, h)) * n / torch.norm(n, dim=-1, keepdim=True)
+
+
+# Examples surfaces and warps
+CylinderWrap = Surface((
+    lambda x: torch.sin(2*np.pi*x[..., 0]),
+    lambda x: torch.sin(4*np.pi*x[..., 0]),
+    lambda x: x[..., 1]
+))
+
+
+LogStep_Quadratic = Diffeomorphism((
+        lambda x: 0.9*x[..., 0]**2 + 0.1 * x[..., 0],
+        lambda x: (0.5 * torch.log(20*x[..., 1]+1) / torch.log(21*torch.ones(1)) 
+          + 0.25 * (1 + torch.tanh(20*(x[..., 1]-0.5)) / torch.tanh(21*torch.ones(1))))
+))
