@@ -1,3 +1,4 @@
+from ..common import central_differences
 import torch
 import torch.nn as nn
 
@@ -6,29 +7,29 @@ from numpy import pi
 
 class Diffeomorphism(nn.Module):
     def __init__(self, f):
-        super(Diffeomorphism, self).__init__()
+        super().__init__()
         self.f = f
     
     def forward(self, x):
         return self.f(x)
     
     def derivative(self, x, h=5e-4):
-        return 0.5 * (self(x+h) - self(x-h)) / h
+        return central_differences(self, x, h)
 
 
 class Curve(nn.Module):
     """ Define a torch-compatible parametrized curve class, with finite
     difference approximation of derivatives, and composition operator. """
     def __init__(self, component_function_tuple):
-        super(Curve, self).__init__()
+        super().__init__()
         self.C = tuple(component_function_tuple)
     
     def forward(self, X):
         return torch.cat([ci(X) for ci in self.C], dim=-1)
     
-    def derivative(self, X, h=5e-4):
+    def derivative(self, X, h=1e-4):
         """ Finite difference approximation of curve velocity. """
-        return 0.5 * torch.cat([ci(X + h) - ci(X - h) for ci in self.C], dim=-1) / h
+        return torch.cat([central_differences(ci, X, h) for ci in self.C], dim=-1)
     
     def compose(self, f: Diffeomorphism):
         """ Composition from right with a map f: R -> R """
@@ -41,9 +42,9 @@ class Curve(nn.Module):
 
 class Qmap(nn.Module):
     """ Q-map transformation of curves """
-    # TODO: Add reference to Q-map
+    # TODO: Add literary reference to Q-map
     def __init__(self, curve: Curve):
-        super(Qmap, self).__init__()
+        super().__init__()
         self.c = curve
         
     def forward(self, X, h=1e-4):
@@ -60,21 +61,32 @@ class SRVT(nn.Module):
         return self.c.derivative(X, h=h) / torch.sqrt(self.c.derivative(X, h=h).norm(dim=-1, keepdim=True))
 
 
-""" Below is a couple of example curves ann diffeomorphism for testing the 
+""" Below is a couple of example curves and diffeomorphisms for testing the 
 reparametrization algorithm."""
-Circle = Curve((
-    lambda x: torch.cos(2*pi*x),
-    lambda x: torch.sin(2*pi*x)
-))
+class Circle(Curve):
+    def __init__(self):
+        super().__init__((
+            lambda x: torch.cos(2*pi*x),
+            lambda x: torch.sin(2*pi*x)
+        ))
 
-Infinity = Curve((
-    lambda x: torch.cos(2*pi*x),
-    lambda x: torch.sin(4*pi*x)
-))
 
-QuadDiff = Diffeomorphism(lambda x: 0.9 * x**2 + 0.1 * x)
+class Infinity(Curve):
+    def __init__(self):
+        super().__init__((
+            lambda x: torch.cos(2*pi*x),
+            lambda x: torch.sin(4*pi*x)
+        ))
 
-LogStepDiff = Diffeomorphism(
-    lambda x: (0.5 * torch.log(20*x+1) / torch.log(21*torch.ones(1)) 
-    + 0.25 * (1 + torch.tanh(20*(x-0.5)) / torch.tanh(21*torch.ones(1))))
-)
+
+class QuadDiff(Diffeomorphism):
+    def __init__(self):
+        super().__init__(lambda x: 0.9 * x**2 + 0.1 * x)
+
+
+class LogStepDiff(Diffeomorphism):
+    def __init__(self):
+        super().__init__(
+            lambda x: (0.5 * torch.log(20*x+1) / torch.log(21*torch.ones(1)) 
+                + 0.25 * (1 + torch.tanh(20*(x-0.5)) / torch.tanh(21*torch.ones(1))))
+        )

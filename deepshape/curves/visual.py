@@ -19,12 +19,10 @@ def plot_curve(c, npoints=201, dotpoints=None, ax=None, **kwargs):
         ax.plot(cx, cy, c=ax.lines[-1].get_color(), ls='none', marker='o')
 
 
-
 def get_plot_data(q, r, network, npoints):
     x = torch.linspace(0, 1, npoints).unsqueeze(-1)
-
-    z, y = network(x)
-    z, y = z.detach(), y.detach()
-    Q, R = q(x), network.reparametrized(r, x)
-    R = R.detach()
-    return x, z, y, Q, R
+    with torch.no_grad():
+        y = network(x)
+        u = network.derivative(x)
+        Q, R = q(x), torch.sqrt(u) * r(y)
+    return x, y, u, Q, R

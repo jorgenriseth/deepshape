@@ -5,13 +5,14 @@ import numpy as np
 from torch import cos, sin
 from numpy import pi
 
+from ..common import central_differences
+
 
 class CurveApprox(nn.Module):
     def derivative(self, X, h=5e-4):
         """ Finite difference approximation of curve velocity. """
         return (0.5 / h) * (self.forward(X + h) - self.forward(X - h) ) / h
     
-
 
 class  FourierApprox(CurveApprox):
     def __init__(self, Xtr: torch.Tensor, y: torch.Tensor, N: int):
@@ -52,10 +53,6 @@ class  FourierApprox(CurveApprox):
             raise ValueError("y should be 2D-Tensor")
 
 
-def central_diff(f, X, h=5e-4):
-    return 0.5 / h * (f(X + h) - f(X - h))
-
-
 class QmapApprox(CurveApprox):
     def __init__(self, fa : FourierApprox):
         # centroid = fa.compute_centroid()
@@ -66,7 +63,7 @@ class QmapApprox(CurveApprox):
     def forward(self, x, h=None):
         if h is None:
             return torch.sqrt(self.fa.derivative(x).norm(dim=-1, keepdim=True)) * self.fa(x)
-        return torch.sqrt(central_diff(f, x, h).norm(dim=-1, keepdim=True)) * self.fa(x)
+        return torch.sqrt(central_differences(self.fa, x, h).norm(dim=-1, keepdim=True)) * self.fa(x)
 
 
 
