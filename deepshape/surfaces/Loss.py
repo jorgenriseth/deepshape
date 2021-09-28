@@ -1,19 +1,21 @@
 import torch
 from torch.nn import Module
 from torch.nn.functional import mse_loss
+from ..common import batch_determinant
+from .utils import torch_square_grid
 
 class ShapeDistance(Module):
-    def __init__(self, q, r, k=128, *, numeric_stabilizer = 1e-8):
+    def __init__(self, q, r, k=32, *, numeric_stabilizer = 1e-7):
         super().__init__()
         self.q = q
         self.r = r
-        self.X = torch.linspace(0, 1, k).reshape(-1, 1)      
+        self.X = torch_square_grid(k).reshape(-1, 2)
         self.numeric_stab = numeric_stabilizer
              
-    def forward(self, network, h=1e-4):
+    def forward(self, network, h=5e-4):
         Y = network(self.X)
-        U = network.derivative(self.X, h)
-        loss = mse_loss(self.q(self.X), torch.sqrt(U + self.numeric_stab) * self.r(Y)) * 2.
+        U = batch_determinant(network.derivative(self.X, h))
+        loss = mse_loss(self.q(self.X), torch.sqrt(U) * self.r(Y)) * 3.
         self.loss = loss.item()
         return loss
         

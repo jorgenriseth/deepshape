@@ -33,7 +33,3 @@ def symmetric_part(matrix):
 
 def antisymmetric_part(matrix):
     return 0.5 * (matrix - matrix.transpose())
-
-
-def symmetrize_matrix(matrix):
-    return symmetric_part(matrix), antisymmetric_part(matrix)
