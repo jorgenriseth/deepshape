@@ -1,3 +1,5 @@
+""" Layers within here are still available due to legacy purposes but have to be explicitly imported."""
+
 import torch
 import torch.nn as nn
 
@@ -51,6 +53,7 @@ class FourierLayer(nn.Module):
         T2 = self.upsample(S1) * S2.repeat(1, 1, n)
         T3 = self.upsample(S1) * C2.repeat(1, 1, n)
 
+
         # Function output tensor
         B = torch.zeros(K, 2, 2*N)
 
@@ -62,7 +65,26 @@ class FourierLayer(nn.Module):
 
         B[:, 0, (n+n**2):N] = T3[:, 0, :]  # Type 3 x-direction
         B[:, 1, (N+n+n**2):] = T3[:, 1, :]  # Type3 y-direction
+
+        return x + (B @ self.weights)
+
+    def derivative(self, x, h=1e-4):
+        """Assumes input on form (K, 2)"""
+        K = x.shape[0]
+        n, N = self.n, self.N
+        z = (x.view(K, 2, 1) * self.nvec)
         
+        if h is not None:
+            pass
+        
+        # Sine matrices
+        S1 = torch.sin(pi * z)
+        S2 = torch.sin(2 * pi * z)[:, (1, 0), :]
+        
+        # Cosine matrices
+        C1 = torch.cos(pi * z)
+        C2 = torch.cos(2 * pi * z)[:, (1, 0), :]
+
         # Now for derivative matrices
         T11 = self.upsample(self.nvec * pi * C1) * S2.repeat(1, 1, n)
         T12 = self.upsample(S1) * (2 * pi * self.nvec * C2).repeat(1, 1, n)
@@ -86,16 +108,16 @@ class FourierLayer(nn.Module):
 
         D[:, 1, 1, (N+n+n**2):] = T21[:, 1, :]  # Type 3 y-direction dy
         D[:, 1, 0, (N+n+n**2):] = T22[:, 1, :]  # Type 3 y-direction dx 
-        
-        # Add a batch-size identity matrix
-        I = torch.eye(2).view(1, 2, 2).repeat(K, 1, 1)
 
         # Store trace and determinant for projection.
         A = D @ self.weights
         self.traceD = batch_trace(A)
         self.detD = batch_determinant(A)
+        
+        # Add a batch-size identity matrix
+        I = torch.eye(2).view(1, 2, 2).repeat(K, 1, 1)
+        return I + A
 
-        return x + (B @ self.weights), batch_determinant(I + A)
         
     def project(self, X, epsilon, delta):
        # epsilon = torch.norm(self.weights, 1) * self.n**3 / (8 * 64)
@@ -149,11 +171,12 @@ class PalaisLayer(nn.Module):
         
         # Sine matrices
         S1 = torch.sin(pi * z) / self.nvec
-        S2 = torch.sin(2 * pi * z)[:, (1, 0), :] / self.nvec
+        S2 = torch.sin(2 * pi * z)[:, (1, 0), :]# / self.nvec
+        
         
         # Cosine matrices
         C1 = torch.cos(pi * z) / self.nvec
-        C2 = torch.cos(2 * pi * z)[:, (1, 0), :] / self.nvec
+        C2 = torch.cos(2 * pi * z)[:, (1, 0), :]# / self.nvec
         
         # Tensor product matrices.
         T2 = self.upsample(S1) * S2.repeat(1, 1, n)
@@ -206,19 +229,26 @@ class PalaisLayer(nn.Module):
         return x + (B @ self.weights), batch_determinant(I + A)
         
     def project(self, X, epsilon, delta):
-       # epsilon = torch.norm(self.weights, 1) * self.n**3 / (8 * 64)
-        with torch.no_grad():
-            Z, J = self(X)
+    #    # epsilon = torch.norm(self.weights, 1) * self.n**3 / (8 * 64)
+    #     with torch.no_grad():
+    #         Z, J = self(X)
 
-            # Compute the smallest root in projection polynomial.
-            Q = torch.where(
-                torch.abs(self.detD) < delta,  # Polynomial approximately linear
-                batch_linear(self.traceD, epsilon + delta),
-                batch_quadratic(self.traceD, self.detD, epsilon)  # else, set to
-            )
-            k = Q.min().item()  # Extract smallest root.
-            if k < 1.:
-                self.weights *= k # Scale weights
+    #         # Compute the smallest root in projection polynomial.
+    #         Q = torch.where(
+    #             torch.abs(self.detD) < delta,  # Polynomial approximately linear
+    #             batch_linear(self.traceD, epsilon + delta),
+    #             batch_quadratic(self.traceD, self.detD, epsilon)  # else, set to
+    #         )
+    #         k = Q.min().item()  # Extract smallest root.
+    #         if k < 1.:
+    #             self.weights *= k # Scale weights
+
+        with torch.no_grad():
+            a = 1./ (np.pi * torch.abs(self.weights) / self.nvec.repeat(4*self.n + 2)).sum()
+            # a = 1./ (np.pi * torch.abs(self.weights).sum())
+
+            if a < 1:
+                self.weights *= a
 
 
 # Projection helper function 1 
@@ -229,7 +259,6 @@ def batch_quadratic(tr, det, epsilon):
         torch.ones_like(tr)
     )
 
-
 # Projection helper function 2
 def batch_linear(tr, epsilon):
     return torch.where(
@@ -237,15 +266,3 @@ def batch_linear(tr, epsilon):
         torch.Tensor([1.]),
         - (1 - epsilon) / tr
     )
-
-
-# Compute determinant of a batch of 2x2 matrices.
-def batch_determinant(B):
-    assert B.dim() == 3, f"Dim.shape should be (K, 2, 2), got {B.shape}"
-    return (B[:, 0, 0] * B[:, 1, 1] - B[:, 1, 0] * B[:, 0, 1]).view(-1, 1)
-
-
-# Compute trace of a batch of 2x2 matrices.
-def batch_trace(B):
-    assert B.dim() == 3, f"Dim.shape should be (K, 2, 2), got {B.shape}"
-    return (B[:, 0, 0] + B[:, 1, 1]).view(-1, 1)

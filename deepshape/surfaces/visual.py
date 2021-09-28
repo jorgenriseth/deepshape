@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.collections import LineCollection
 
-from .utils import symmetrize_matrix
+from .utils import antisymmetric_part, symmetric_part
 
 
 def get_plot_data(f, k=32):
@@ -64,7 +64,7 @@ def plot_clustering(X, labels, cluster, title=None, figsize=(8, 6)):
 
 def plot_distance_matrix(D):
     distance = (D + D.min()) / (D.max() - D.min())
-    S, A = symmetrize_matrix(D)
+    S, A = symmetric_part(D), antisymmetric_part(D)
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
     ax1.matshow(distance, vmin=0, vmax=1)
     ax2.matshow(S, vmin=0, vmax=1)

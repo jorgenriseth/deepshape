@@ -1,3 +1,4 @@
+""" Various layers kept for legacy-purposes. Will probably be removed at some point."""
 import torch
 import torch.nn as nn
 
@@ -42,45 +43,6 @@ class FourierLayer(nn.Module):
         with torch.no_grad():
             if self.ymin < epsilon:
                 self.weights *= 1 / (1 + epsilon - self.ymin)
-
-
-# Define a Palais Layer    
-class PalaisLayer(nn.Module):
-    def __init__(self, N, init_scale=0.):
-        super().__init__()
-        self.N = N
-        self.nvec = torch.arange(1, N+1)
-        self.weights = torch.nn.Parameter(
-            init_scale * torch.randn(N, 1, requires_grad=True)
-        )
-        self.find_ymin()
-        self.project()
-        
-    def forward(self, x):
-        z = np.pi * self.nvec * x
-        y = np.pi * torch.cos(z)
-        z = torch.sin(z) / self.nvec
-        self.ymin = torch.min(y).item()
-        return x + z @ self.weights, 1. + y @ self.weights
-
-    def find_ymin(self, npoints=1024):
-        x = torch.linspace(0, 1, npoints).unsqueeze(-1)
-        self.K = npoints
-        
-        _, y = self.forward(x)
-        self.ymin = torch.min(y).item()
-        return self.ymin
-    
-    def project(self, npoints=1024, epsilon=None):
-        self.find_ymin(npoints)
-
-        if epsilon is None:
-            epsilon = torch.norm(self.weights, 1) * self.N**2 / (8 * self.K)
-            
-        with torch.no_grad():
-            if self.ymin < epsilon:
-                self.weights *= 1 / (1 + epsilon - self.ymin)
-
 
 
 class BumpLayer(nn.Module):
