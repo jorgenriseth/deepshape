@@ -36,3 +36,11 @@ class ReparametrizationNetwork(nn.Module):
                 if isinstance(module, DeepShapeLayer):
                     module.project(**kwargs)
 
+
+    def to(self, device):
+        super().to(device)
+        for module in self.modules():
+            if isinstance(module, DeepShapeLayer):
+                module.to(device)
+        
+        return self

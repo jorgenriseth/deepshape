@@ -8,7 +8,7 @@ class PalaisLayer(DeepShapeLayer):
     def __init__(self, N, init_scale=0.):
         super().__init__()
         self.N = N
-        self.nvec = torch.arange(1, N+1)
+        self.nvec = torch.arange(1, N+1, dtype=torch.float)
         self.weights = torch.nn.Parameter(
             init_scale * torch.randn(N, 1, requires_grad=True)
         )
@@ -25,3 +25,7 @@ class PalaisLayer(DeepShapeLayer):
     def project(self):
         with torch.no_grad():
             self.weights /= max(1. , np.pi * self.weights.norm())
+
+    def to(self, device):
+        self.nvec = self.nvec.to(device)
+        return self

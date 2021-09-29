@@ -21,7 +21,7 @@ class ReparametrizationNetwork(nn.Module):
         if h is not None:
             return jacobian(self, x, h)
         
-        Df = torch.eye(2, 2)
+        Df = torch.eye(2, 2, device=x.device)
         for layer in self.layerlist:
             Df = layer.derivative(x) @ Df
             x = layer(x)
@@ -33,3 +33,10 @@ class ReparametrizationNetwork(nn.Module):
             for module in self.modules():
                 if isinstance(module, DeepShapeLayer):
                     module.project(**kwargs)
+
+    def to(self, device):
+        for module in self.modules():
+            if isinstance(module, DeepShapeLayer):
+                module.to(device)
+        
+        return self
