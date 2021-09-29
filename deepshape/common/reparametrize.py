@@ -9,7 +9,7 @@ def reparametrize(q, r, network, loss, optimizer, iterations, logger, scheduler=
     # Evaluate initial error
     logger.start()
     error = numpy_nans(iterations+1)
-    error[0] = loss(network)
+    error[0] = float(loss(network))
     
     for i in range(iterations):
         # Zero gradient buffers
@@ -37,16 +37,19 @@ def reparametrize(q, r, network, loss, optimizer, iterations, logger, scheduler=
 def reparametrize_lbfgs(q, r, network, loss, optimizer, logger, scheduler=None):
     # Get max iterations from optimizer
     iterations = optimizer.defaults["max_eval"]
-    print(iterations)
     
     # Evaluate initial error
     logger.start()
+
+    global error
     error = numpy_nans(iterations+1)
-    error[0] = loss(network)
+    error[0] = float(loss(network))
+
     it = [0]
     logger.log(it=0, value=loss.get_last())
 
     def closure():
+        global error
         it[0] += 1
 
         # Set gradient buffers to zero.
@@ -63,12 +66,12 @@ def reparametrize_lbfgs(q, r, network, loss, optimizer, logger, scheduler=None):
             scheduler.step(l)
 
         # Log error
-        try: 
-            error[it[0]] = l.item()
+        try:
+            error[it[0]] = loss.get_last()
 
         except IndexError:  # Increase length of error-array if necessary... 
-            np.pad(error, (0, iterations), constant_values=np.nan)
-            error[it[0]] = l.item()  # and retry.
+            error = np.pad(error, (0, iterations), constant_values=np.nan)
+            error[it[0]] = loss.get_last()  # and retry.
             
         logger.log(it=it[0], value=loss.get_last())
         

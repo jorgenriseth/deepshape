@@ -6,6 +6,7 @@ import numpy as np
 from numpy import pi
 
 from .DeepShapeLayer import DeepShapeLayer
+from ...common import batch_determinant, batch_trace
    
 class PalaisLayer(DeepShapeLayer):
     def __init__(self, n, init_scale=0.):
@@ -13,7 +14,6 @@ class PalaisLayer(DeepShapeLayer):
         self.eps = torch.finfo(torch.float).eps
 
         # Number related to basis size
-        self.nvec = torch.arange(1, n+1, dtype=torch.float)
         self.n = n
         self.N = 2 * n**2 + n
         
@@ -25,7 +25,15 @@ class PalaisLayer(DeepShapeLayer):
             init_scale * torch.randn(2*self.N, requires_grad=True)
         )
 
+        self.nvec = torch.arange(1, n+1, dtype=torch.float)
         self.L = self.lipschitz_vector()
+
+    def to(self, device):
+        super().to(device)
+        self.nvec = self.nvec.to(device)
+        self.L = self.L.to(device)
+        return self
+
 
     def forward(self, x):
         """Assumes input on form (K, 2)"""
@@ -46,8 +54,7 @@ class PalaisLayer(DeepShapeLayer):
         T2 = self.upsample(S1) * S2.repeat(1, 1, n)
         T3 = self.upsample(S1) * C2.repeat(1, 1, n)
 
-        # Function output tensor
-        self.B = torch.zeros(K, 2, 2*N)
+        self.B = torch.zeros(K, 2, 2*N, device=x.device)
 
         self.B[:, 0, :n] = S1[:, 0, :]  # Type 1 x direction
         self.B[:, 1, N:(N+n)] = S1[:, 1, :]  # Type 1  y-direction
@@ -80,3 +87,35 @@ class PalaisLayer(DeepShapeLayer):
             L = (torch.abs(self.weights) * self.L).sum() #+ self.eps
             if L >= 1:
                 self.weights /= L
+
+    # def project(self, epsilon=None, delta=1e-2, **kwargs):
+    #     epsilon = torch.norm(self.weights, 1) * self.n**3 / (8 * 64)
+    #     with torch.no_grad():
+    #         trace, det = batch_trace(self.Df), batch_determinant(self.Df)
+
+    #         # Compute the smallest root in projection polynomial.
+    #         Q = torch.where(
+    #             torch.abs(trace) < delta,  # Polynomial approximately linear
+    #             batch_linear(trace, epsilon + delta),
+    #             batch_quadratic(trace, det, epsilon)  # else, set to
+    #         )
+    #         k = Q.min().item()  # Extract smallest root.
+    #         if k < 1.:
+    #             self.weights *= k # Scale weights
+
+
+# Projection helper function 1 
+def batch_quadratic(tr, det, epsilon):
+    return torch.where(
+        torch.logical_or(det < 0, tr <= - 2 * torch.sqrt(det * (1 - epsilon))),
+        (- tr - torch.sqrt(tr**2 - (4 * det * (1 - epsilon)))) / (2 * det),
+        torch.ones_like(tr)
+    )
+
+# Projection helper function 2
+def batch_linear(tr, epsilon):
+    return torch.where(
+        tr >= - (1 - epsilon),
+        torch.tensor([1.], device=tr.device),
+        - (1 - epsilon) / tr
+    )

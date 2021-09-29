@@ -3,10 +3,9 @@ import numpy as np
 import torch.nn as nn
 from .surfaces import Surface
 
-class ImageInterpolator(nn.Module):
+class ImageInterpolator:
     def __init__(self, img, mode="bilinear", **kwargs):
         """ Assumes img of shape (C, H, W)"""
-        super().__init__(**kwargs)
         if img.dim() == 2:
             self.img = img.view(1, 1, *img.shape).clone().detach()
             self.H, self.W = img.shape
@@ -19,7 +18,7 @@ class ImageInterpolator(nn.Module):
 
         self.mode = mode
     
-    def forward(self, x):
+    def __call__(self, x):
         if x.dim() == 2:
             return self.eval_point_list(x)
         elif x.dim() == 3:
@@ -31,6 +30,7 @@ class ImageInterpolator(nn.Module):
         points (x, y) placed within the domain D = [0, 1]^2"""
         npoints = x.shape[0]
         H = int(np.sqrt(npoints))
+        self.img = self.img.to(x.device)
         
          #  Map input from [0, 1] -> [-1, 1] (required by grid_sample)
         X = x.view(1, H, H , 2)
