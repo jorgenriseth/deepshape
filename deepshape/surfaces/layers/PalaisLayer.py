@@ -88,8 +88,8 @@ class PalaisLayer(DeepShapeLayer):
             if L >= 1:
                 self.weights /= L
 
-    # def project(self, epsilon=None, delta=1e-2, **kwargs):
-    #     epsilon = torch.norm(self.weights, 1) * self.n**3 / (8 * 64)
+    # def project(self, epsilon=1e-2, delta=1e-3, **kwargs):
+    #     # epsilon = torch.norm(self.weights, 1) * self.n**3 / (8 * 64)
     #     with torch.no_grad():
     #         trace, det = batch_trace(self.Df), batch_determinant(self.Df)
 
