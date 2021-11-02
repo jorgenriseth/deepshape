@@ -15,16 +15,16 @@ class PalaisLayer(DeepShapeLayer):
         self.project()
         
     def forward(self, x):
-        z = torch.sin(np.pi * self.nvec * x) / self.nvec
+        z = torch.sin(np.pi * self.nvec * x) / (self.nvec * np.pi)
         return x + z @ self.weights
     
     def derivative(self, x, h=None):
-        y = np.pi * torch.cos(np.pi * self.nvec * x)
+        y = torch.cos(np.pi * self.nvec * x)
         return 1. + y @ self.weights
     
     def project(self):
         with torch.no_grad():
-            self.weights /= max(1. , np.pi * self.weights.norm())
+            self.weights /= max(0.9 , self.weights.norm())
 
     def to(self, device):
         self.nvec = self.nvec.to(device)

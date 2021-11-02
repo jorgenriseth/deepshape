@@ -14,7 +14,7 @@ class ShapeDistance:
     def __call__(self, network):
         Y = network(self.X)
         U = batch_determinant(network.derivative(self.X, self.h))
-        loss = mse_loss(self.q(self.X), torch.sqrt(U) * self.r(Y)) * 3.
+        loss = mse_loss(self.q(self.X), torch.sqrt(U + 1e-7) * self.r(Y)) * 3.
         self.loss = float(loss)
         return loss
         
@@ -27,15 +27,17 @@ class ShapeDistance:
 
 
 class SingleComponentLoss(ShapeDistance):
-    def __init__(self, q, r, k=32, component=2, **kwargs):
+    def __init__(self, q, r, component=2, k=32, h=3.4e-4, **kwargs):
         super().__init__(q, r, k, **kwargs)
         self.component = component
+        self.h = h
              
-    def __call__(self, network, h=None):
+    def __call__(self, network):
         Y = network(self.X)
-        U = batch_determinant(network.derivative(self.X, h))
+        U = batch_determinant(network.derivative(self.X, self.h))
+
         loss = mse_loss(self.q(self.X)[..., self.component],
-            (torch.sqrt(U) * self.r(Y))[..., self.component])
+            (torch.sqrt(U + 1e-7) * self.r(Y))[..., self.component])
 
         self.loss = loss.item()
         return loss

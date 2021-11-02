@@ -12,7 +12,7 @@ def load_curve_data(filename, columns=None):
 
 
 def col_linspace(start, end, N):
-    return torch.linspace(0, 1, N).unsqueeze(-1)
+    return torch.linspace(start, end, N).unsqueeze(-1)
 
 
 def get_function_data(filename, column):

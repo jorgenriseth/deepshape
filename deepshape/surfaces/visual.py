@@ -62,11 +62,11 @@ def plot_clustering(X, labels, cluster, title=None, figsize=(8, 6)):
         plt.title(title)
 
 
-def plot_distance_matrix(D):
+def plot_distance_matrix(D, *args, **kwargs):
     distance = (D + D.min()) / (D.max() - D.min())
     S, A = symmetric_part(D), antisymmetric_part(D)
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-    ax1.matshow(distance, vmin=0, vmax=1)
-    ax2.matshow(S, vmin=0, vmax=1)
-    ax3.matshow(np.abs(A), vmin=0, vmax=1)
+    ax1.matshow(distance, vmin=0, vmax=1, *args, **kwargs)
+    ax2.matshow(S, vmin=0, vmax=1, *args, **kwargs)
+    ax3.matshow(np.abs(A), vmin=0, vmax=1, *args, **kwargs)
     plt.show()
