@@ -30,7 +30,7 @@ class Surface:
         H[..., component] = h
         return 0.5 * torch.cat([(ci(X + H) - ci(X - H)).unsqueeze(dim=-1) for ci in self.S], dim=-1) / h
     
-    def volume_factor(self, X, h=3.4e-4):
+    def volume_factor(self, X, h=1e-4):
         return torch.norm(self.normal_vector(X, h), dim=-1, keepdim=True)
 
     def normal_vector(self, X, h=3.4e-4):

@@ -25,9 +25,9 @@ class ReparametrizationNetwork(nn.Module):
         
         dc = 1.
         for layer in self.layerlist:
-            dc *= layer.derivative(x)
+            dc = dc *  layer.derivative(x)
             x = layer(x)
-            
+        
         return dc
 
     def project(self, **kwargs):

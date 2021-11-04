@@ -57,9 +57,27 @@ class ImageInterpolator:
 
 
 class SingleChannelImageSurface(Surface):
-    def __init__(self, img, **kwargs):
-        super().__init__((lambda x: x[..., 0], lambda x: x[..., 1], lambda x: self.img(x)))
+    def __init__(self, img, centering=True, **kwargs):
+        if centering:
+            self.center_x, self.center_y = self.find_center(img)
+        else:
+            self.center_x = 0.
+            self.center_y = 0.
+
+        super().__init__((
+            lambda x: x[..., 0] - self.center_x,
+            lambda x: x[..., 1] - self.center_y,
+            lambda x: self.img(x)
+        ))
+
         self.img = ImageInterpolator(img)
+
+    def find_center(self, im):
+        nx, ny = im.shape[-2:]
+        mass = im.sum((-1, -2))
+        sx= (im * torch.arange(nx)).sum((-1, -2)) / ( mass * nx ) 
+        sy = (im * torch.arange(ny)).sum((-1, -2)) / ( mass * nx )
+        return sx, sy
 
 
 class MultiChannelImageSurface(Surface):

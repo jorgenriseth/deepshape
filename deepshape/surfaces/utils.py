@@ -7,7 +7,6 @@ def torch_square_grid(k=64):
     X = torch.stack((X, Y), dim=-1)
     return X
 
-
 def single_component_mse(inputs, targets, component : int):
     """ Stored here for now, will probably be moved elsewhere in the future"""
     return torch.sum((inputs[..., component] - targets[..., component])**2) / inputs[..., component].nelement()
@@ -23,7 +22,7 @@ def save_distance_matrix(filename, D, y=None):
 
         
 def load_distance_matrix(filename):
-    with open('./newfile.pickle', 'rb') as f:
+    with open(filename, 'rb') as f:
         return pickle.load(f)
 
 

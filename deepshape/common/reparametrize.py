@@ -2,9 +2,9 @@ import torch
 import numpy as np
 from .utils import numpy_nans
 
-def reparametrize(q, r, network, loss, optimizer, iterations, logger, scheduler=None):
+def reparametrize(q, r, network, loss, optimizer, iterations, logger, scheduler=None, projection_kwargs={}):
     if isinstance(optimizer, torch.optim.LBFGS):
-        return reparametrize_lbfgs(q, r, network, loss, optimizer, logger, scheduler)
+        return reparametrize_lbfgs(q, r, network, loss, optimizer, logger, scheduler, projection_kwargs)
         
     # Evaluate initial error
     logger.start()
@@ -25,7 +25,7 @@ def reparametrize(q, r, network, loss, optimizer, iterations, logger, scheduler=
             
         # Update parameters
         optimizer.step()
-        network.project()
+        network.project(**projection_kwargs)
 
         error[i+1] = loss.get_last()
         logger.log(it=i, value=error[i+1])
@@ -34,7 +34,7 @@ def reparametrize(q, r, network, loss, optimizer, iterations, logger, scheduler=
     return error
 
 
-def reparametrize_lbfgs(q, r, network, loss, optimizer, logger, scheduler=None):
+def reparametrize_lbfgs(q, r, network, loss, optimizer, logger, scheduler=None, projection_kwargs={}):
     # Get max iterations from optimizer
     iterations = optimizer.defaults["max_eval"]
     
@@ -78,7 +78,7 @@ def reparametrize_lbfgs(q, r, network, loss, optimizer, logger, scheduler=None):
         return l
 
     optimizer.step(closure)
-    network.project()
+    network.project(**projection_kwargs)
     logger.log(it=it[0], value=loss.get_last())
     logger.stop()
 

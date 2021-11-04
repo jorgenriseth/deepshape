@@ -23,7 +23,7 @@ class ReparametrizationNetwork(nn.Module):
         
         Df = torch.eye(2, 2, device=x.device)
         for layer in self.layerlist:
-            Df = layer.derivative(x) @ Df
+            Df = layer.derivative(x, h) @ Df
             x = layer(x)
             
         return Df
