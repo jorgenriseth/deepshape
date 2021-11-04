@@ -76,6 +76,13 @@ class Infinity(Curve):
             lambda x: torch.sin(4*pi*x)
         ))
 
+class HalfCircle(Curve):
+    def __init__(self):
+        super().__init__((
+            lambda x: torch.cos(pi * x),
+            lambda x: torch.sin(pi * x)
+        ))
+
 
 class QuadDiff(Diffeomorphism):
     def __init__(self):

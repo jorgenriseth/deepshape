@@ -24,7 +24,9 @@ class PalaisLayer(DeepShapeLayer):
     
     def project(self):
         with torch.no_grad():
-            self.weights /= max(0.9 , self.weights.norm())
+            norm = self.weights.norm()
+            if norm > 0.99:
+                self.weights /= norm
 
     def to(self, device):
         self.nvec = self.nvec.to(device)
