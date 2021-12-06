@@ -1,5 +1,6 @@
 import torch
 
+
 def central_differences(c, x, h=1e-4):
     return (0.5 / h) * (c(x + h) - c(x - h))
 
