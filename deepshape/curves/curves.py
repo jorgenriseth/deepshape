@@ -1,8 +1,4 @@
-from .utils import col_linspace
-from torch.nn.functional import mse_loss
-from torch.nn import Module
-from torch._C import Value
-from ..common import central_differences
+from ..common import central_differences, col_linspace
 import torch
 import torch.nn as nn
 import numpy as np
@@ -38,13 +34,13 @@ class Curve:
         """ Finite difference approximation of curve velocity. """
         return torch.cat([central_differences(ci, X, h) for ci in self.C], dim=-1)
 
+    def compose_component(self, i, f):
+        return lambda x: self.C[i](f(x))
+
     def compose(self, f: Diffeomorphism):
         """ Composition from right with a map f: R -> R """
         # TODO: Allow genereal dimension curves.
-        return Curve((lambda x: ci(f(x)) for ci in self.C))
-
-    def subtract(self, c2):
-        return Curve((lambda x: self.C[i](x) - c2.C[i](x) for i in range(self.dim)))
+        return Curve((self.compose_component(i, f) for i in range(self.dim)))
 
 
 class Qmap:
@@ -88,7 +84,7 @@ class Infinity(Curve):
         super().__init__((
             lambda x: torch.cos(2*pi*x),
             lambda x: torch.sin(4*pi*x)
-        )) / np.sqrt(3.)
+        ))
 
 
 class HalfCircle(Curve):

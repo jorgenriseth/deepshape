@@ -5,9 +5,8 @@ from torch import sin, cos
 import numpy as np
 from numpy import pi, sqrt
 
-from .DeepShapeLayer import DeepShapeLayer
-from ..utils import torch_square_grid
-from ...common import batch_determinant, batch_trace, central_differences, jacobian
+from ...common import DeepShapeLayer, torch_square_grid
+from ...common import batch_determinant, batch_trace, jacobian
    
 class PalaisLayer(DeepShapeLayer):
     def __init__(self, n, init_scale=0.0, projection_method="lipschitz"):
@@ -153,7 +152,7 @@ class PalaisLayer(DeepShapeLayer):
         else:
             raise ValueError(f"Invalid projection method. Got '{self.projection_method}'.")
 
-    def project_lipschitz(self):
+    def project_lipschitz(self, **kwargs):
         with torch.no_grad():
             L = (torch.abs(self.weights) * self.L).sum() #+ self.eps
 
@@ -161,7 +160,7 @@ class PalaisLayer(DeepShapeLayer):
                 self.weights /= L
 
 
-    def project_determinant(self, delta=1e-3, epsilon=1e-2, k=32):
+    def project_determinant(self, delta=1e-3, epsilon=1e-2, k=32, **kwargs):
         with torch.no_grad():
             if not hasattr(self, 'D'):
                 self.derivative(torch_square_grid(32).reshape(-1, 2))
@@ -178,7 +177,7 @@ class PalaisLayer(DeepShapeLayer):
                 self.weights *= k # Scale weights
 
 
-    def project_eigen(self, epsilon=1e-3, k=32):
+    def project_eigen(self, epsilon=1e-3, k=32, **kwargs):
         with torch.no_grad():
             if not hasattr(self, 'D'):
                 self.derivative(torch_square_grid(32).reshape(-1, 2))

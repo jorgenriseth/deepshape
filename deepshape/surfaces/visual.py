@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.collections import LineCollection
 
-from .utils import antisymmetric_part, symmetric_part
+from ..common.utils import antisymmetric_part, symmetric_part
 
 
 def get_plot_data(f, k=32):
