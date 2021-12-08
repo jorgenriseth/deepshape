@@ -11,25 +11,25 @@ from .utils import antisymmetric_part, symmetric_part
 def get_plot_data(f, k=32):
     K = k**2
     X = torch.rand(K, 2)
-    
+
     X, Y = torch.meshgrid((torch.linspace(0, 1, k), torch.linspace(0, 1, k)))
     X, Y = X.reshape(-1, 1), Y.reshape(-1, 1)
-    
+
     X = torch.cat((X, Y), dim=1)
-    
+
     Z = f(X).detach().numpy().T
     return Z.reshape(-1, k, k)
 
 
 def plot_grid(x, y, ax=None, **kwargs):
     ax = ax or plt.gca()
-    segs1 = np.stack((x,y), axis=2)
-    segs2 = segs1.transpose(1,0,2)
+    segs1 = np.stack((x, y), axis=2)
+    segs2 = segs1.transpose(1, 0, 2)
     ax.add_collection(LineCollection(segs1, **kwargs))
     ax.add_collection(LineCollection(segs2, **kwargs))
     ax.autoscale()
-    
-    
+
+
 def plot_diffeomorphism(f, k=16, ax=None, **kwargs):
     K = k**2
     X = torch.rand(K, 2)
@@ -42,9 +42,9 @@ def plot_diffeomorphism(f, k=16, ax=None, **kwargs):
 
 def plot_clustering(X, labels, cluster, title=None, figsize=(8, 6)):
     x_min, x_max = np.min(X, axis=0), np.max(X, axis=0)
-    X_norm = (X - x_min) / (x_max - x_min) 
+    X_norm = (X - x_min) / (x_max - x_min)
 
-    # Create figure. 
+    # Create figure.
     # TODO: Reconfigure to use optional axis.
     plt.figure(figsize=figsize)
     for i in range(X.shape[0]):
@@ -63,7 +63,7 @@ def plot_clustering(X, labels, cluster, title=None, figsize=(8, 6)):
 
 
 def plot_distance_matrix(D, *args, **kwargs):
-    distance = (D + D.min()) / (D.max() - D.min())
+    distance = (D - D.min()) / (D.max() - D.min())
     S, A = symmetric_part(D), antisymmetric_part(D)
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
     ax1.matshow(distance, vmin=0, vmax=1, *args, **kwargs)

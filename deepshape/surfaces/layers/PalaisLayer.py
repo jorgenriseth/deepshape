@@ -61,7 +61,7 @@ class PalaisLayer(DeepShapeLayer):
         S2 = sin(2 * pi * z)[:, (1, 0), :] / (self.nvec)
         
         # Cosine matrices
-        C1 = cos(pi * z) / (self.nvec * pi)
+        # C1 = cos(pi * z) / (self.nvec * pi)
         C2 = cos(2 * pi * z)[:, (1, 0), :] / (self.nvec) 
         
         # Tensor product matrices.
@@ -153,7 +153,7 @@ class PalaisLayer(DeepShapeLayer):
         else:
             raise ValueError(f"Invalid projection method. Got '{self.projection_method}'.")
 
-    def project_lipschitz(self):
+    def project_lipschitz(self, **kwargs):
         with torch.no_grad():
             L = (torch.abs(self.weights) * self.L).sum() #+ self.eps
 
