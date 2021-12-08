@@ -10,7 +10,7 @@ from .layers import DeepShapeLayer
 class ReparametrizationNetwork(nn.Module):
     def __init__(self, layerlist):
         super().__init__()
-        self.layerlist = layerlist
+        self.layerlist = nn.ModuleList(layerlist)
         for layer in layerlist:
             assert isinstance(layer, DeepShapeLayer), "Layers must inherit DeepShapeLayer"
         
@@ -19,13 +19,10 @@ class ReparametrizationNetwork(nn.Module):
             x = layer(x)
         return x
     
-    def derivative(self, x, h=1e-4):
-        if h is not None:
-            return central_differences(self, x, h)
-        
+    def derivative(self, x, h=1e-4):      
         dc = 1.
         for layer in self.layerlist:
-            dc = dc *  layer.derivative(x)
+            dc = dc * layer.derivative(x, h)
             x = layer(x)
         
         return dc
