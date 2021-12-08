@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from torch import no_grad, eye
+from torch import no_grad, eye, ones_like
 from torch.nn import Module, ModuleList
 from .derivatives import jacobian
 from .LayerBase import DeepShapeLayer
@@ -39,7 +39,7 @@ class ShapeReparamBase(Module, ABC):
 
 class CurveReparametrizer(ShapeReparamBase):
     def derivative(self, x, h=1e-4):
-        dc = 1.
+        dc = ones_like(x)
         for layer in self.layerlist:
             dc = dc * layer.derivative(x, h)
             x = layer(x)
@@ -58,3 +58,9 @@ class SurfaceReparametrizer(ShapeReparamBase):
             x = layer(x)
 
         return Df
+
+
+class Identity(ShapeReparamBase):
+    def derivative(self, x, h=1e-4):
+
+        return

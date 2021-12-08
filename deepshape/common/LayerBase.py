@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 from .derivatives import batch_determinant, central_differences, jacobian
 
+
 class DeepShapeLayer(Module, ABC):
     def __init__(self):
         super().__init__()
@@ -14,7 +15,7 @@ class DeepShapeLayer(Module, ABC):
     @abstractmethod
     def derivative(self, x, h=1e-4):
         pass
-    
+
     @abstractmethod
     def project(self):
         pass

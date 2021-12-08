@@ -1,7 +1,6 @@
 import torch
 from numpy import pi, sqrt
 
-from deepshape.curves.curves import Curve
 from ..common import CurveLayer
 
 

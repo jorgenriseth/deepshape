@@ -1,6 +1,5 @@
-from ..common import central_differences, col_linspace
+from ..common import central_differences
 import torch
-import torch.nn as nn
 import numpy as np
 from numpy import pi
 
@@ -48,7 +47,6 @@ class Qmap:
     # TODO: Add literary reference to Q-map
 
     def __init__(self, curve: Curve):
-        super().__init__()
         self.c = curve
 
     def __call__(self, X, h=1e-4):
@@ -64,7 +62,13 @@ class SRVT:
         self.c = curve
 
     def __call__(self, X, h=1e-4):
-        return self.c.derivative(X, h=h) / torch.sqrt(self.c.derivative(X, h=h).norm(dim=-1, keepdim=True))
+        u = self.c.derivative(X, h=h).norm(dim=-1, keepdim=True)
+        return torch.where(
+            torch.abs(u) < 1e-7,
+            torch.zeros((u.shape[0], self.c.dim)),
+            self.c.derivative(
+                X, h=h) / torch.sqrt(self.c.derivative(X, h=h).norm(dim=-1, keepdim=True))
+        )
 
 
 """ Below is a couple of example curves and diffeomorphisms for testing the 
