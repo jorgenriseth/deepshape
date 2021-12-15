@@ -43,24 +43,14 @@ class CurveReparametrizer(ShapeReparamBase):
         for layer in self.layerlist:
             dc = dc * layer.derivative(x, h)
             x = layer(x)
-
         return dc
 
 
 class SurfaceReparametrizer(ShapeReparamBase):
     def derivative(self, x, h=1e-4):
-        # if h is not None:
-        #     return jacobian(self, x, h)
-
         Df = eye(2, 2, device=x.device)
         for layer in self.layerlist:
             Df = layer.derivative(x, h) @ Df
             x = layer(x)
-
         return Df
 
-
-class Identity(ShapeReparamBase):
-    def derivative(self, x, h=1e-4):
-
-        return

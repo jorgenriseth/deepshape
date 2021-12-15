@@ -27,13 +27,3 @@ class TimeLogger(Logger):
 class Silent(TimeLogger):
     def stop(self):
         pass
-
-
-class ProjectionDebugLogger(Logger):
-    def __init__(self):
-        super().__init__(1)
-
-    def log(self, *, it, value, derivative):
-        if self.interval > 0 and it % self.interval == 0:
-            print('[Iter %5d] loss: %.6f deriv: %.6f' %
-                  (it + 1, value, derivative))
