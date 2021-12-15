@@ -97,7 +97,7 @@ def parse_diffeomorphism(args):
 
 
 def reparametrization_parser(args):
-    fig_path = Path(args.fig_path)
+    fig_path = create_savename(args)
     diffeo = parse_diffeomorphism(args)
     transform = args.transform
     projection_kwargs = {'p': args.p}
@@ -118,3 +118,12 @@ def reparametrization_parser(args):
     num_layers = args.num_layers
     num_funcs = args.num_funcs
     return fig_path, c0, c1, diffeo, transform, num_layers, num_funcs, projection_kwargs, logger
+
+
+def create_savename(args):
+    figpath = f"{args.fig_path}/curves-{args.transform}-{args.curve0}-\
+            {args.curve1}-{args.diffeomorphism}-{args.num_layers}-\
+            {args.num_funcs}-{args.p}"
+    figpath = Path(figpath)
+    figpath.mkdir(exist_ok=True)
+    return figpath

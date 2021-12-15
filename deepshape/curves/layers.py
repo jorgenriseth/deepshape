@@ -40,9 +40,10 @@ class SineSeries(CurveLayer):
 
 
 # TODO: Consider removal, as this is a worse version of its parent
+# TODO: Found error, might explain poor performance
 class UnscaledSineSeries(SineSeries):
     def forward(self, x):
-        return x + (torch.sin(pi * self.nvec * x) / (pi * self.nvec)) @ self.weights
+        return x + (torch.sin(pi * self.nvec * x)) @ self.weights
 
     def derivative(self, x, h=None):
         return 1. + pi * (self.nvec * torch.cos(pi * self.nvec * x)) @ self.weights

@@ -59,8 +59,3 @@ class SurfaceReparametrizer(ShapeReparamBase):
 
         return Df
 
-
-class Identity(ShapeReparamBase):
-    def derivative(self, x, h=1e-4):
-
-        return

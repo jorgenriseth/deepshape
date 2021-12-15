@@ -18,6 +18,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_layers", default=5, type=int)
     parser.add_argument("--num_funcs", default=5, type=int)
     parser.add_argument("--k", default=256, type=int)
+    parser.add_argument("--show", default=False, type=bool)
     args = parser.parse_args()
     fig_path, c0, c1, diffeo, transform, num_layers, num_funcs, projection_kwargs, logger = reparametrization_parser(args)
 
@@ -27,15 +28,17 @@ if __name__ == "__main__":
     subset = [1, 3, 5, 7, 10, 15]
     d = create_convergence_dict(c0, c1, num_layers_list, num_functions_list, transform=transform, projection_kwargs=projection_kwargs, logger=logger)
 
-    fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+    fig, ax = plt.subplots(1, 1, figsize=(12, 4))
     plot_depth_convergence(d, ax, subset=subset)
     ax.legend()
     ax.set_xlabel("# Layers")
-    plt.savefig(f"{fig_path}/depth_convergence-{args.transform}-{args.curve0}-{args.curve1}-{args.diffeomorphism}-{args.num_layers}-{args.num_funcs}-{args.p}.png", bbox_inches="tight")
+    plt.savefig(fig_path / "convergene-depth.png", bbox_inches="tight")
 
-    fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+    fig, ax = plt.subplots(1, 1, figsize=(12, 4))
     plot_width_convergence(d, ax, subset=subset)
     ax.legend()
     ax.set_xlabel("# Functions Per Layer")
-    plt.savefig(f"{fig_path}/width_convergence-{args.transform}-{args.curve0}-{args.curve1}-{args.diffeomorphism}-{args.num_layers}-{args.num_funcs}-{args.p}.png", bbox_inches="tight")
-    plt.show()
+    plt.savefig(fig_path / "convergene-width.png", bbox_inches="tight")
+    if args.show:
+        plt.show()
+
