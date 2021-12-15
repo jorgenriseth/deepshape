@@ -20,7 +20,6 @@ class ShapeDistanceBase(ABC):
         self.X = self.create_point_collection(k)
         self.k = k**(self.X.shape[-1])
         self.r = r
-        self.q = q
         self.Q = q(self.X)
 
     def loss_func(self, U, Y):
@@ -39,8 +38,13 @@ class ShapeDistanceBase(ABC):
 
         # Check for invalid derivatives. Retry projection, or raise error.
         if U.min() < 0. or torch.isnan(U.min()):
-            raise ValueError(
-                f"ProjectionError: derivative minimum is {float(U.min())}")
+            # Retry once:
+            network.project()
+            Y = network(self.X)
+            U = self.get_determinant(network)
+            if U.min() < 0. or torch.isnan(U.min()):
+                raise ValueError(
+                    f"ProjectionError: derivative minimum is {float(U.min())}")
 
         loss = self.loss_func(U, Y)
         self.loss = float(loss)
@@ -69,7 +73,7 @@ class ComponentDistance(ShapeDistanceBase):
         self.component = component
 
     def loss_func(self, U, Y):
-        return component_mse(self.Q, torch.sqrt(U+1e-8) * self.r(Y), self.component)
+        return component_mse(self.Q, torch.sqrt(U+1e-7) * self.r(Y), self.component)
 
 
 class ImageComponentDistance(SurfaceDistance, ComponentDistance):

@@ -19,6 +19,10 @@ def torch_square_grid(k=64):
     return X
 
 
+def torch_clamp(x, lo, hi):
+    return torch.minimum(torch.tensor(hi), torch.maximum(x, torch.tensor(lo)))
+
+
 def component_mse(inputs, targets, component: int):
     """ Stored here for now, will probably be moved elsewhere in the future"""
     return torch.sum((inputs[..., component] - targets[..., component])**2) / inputs[..., component].nelement()
@@ -44,3 +48,18 @@ def symmetric_part(matrix):
 
 def antisymmetric_part(matrix):
     return 0.5 * (matrix - matrix.transpose())
+
+
+def scale_lipschitz(weights, Ln, p=1, eps=1e-6):
+    with torch.no_grad():
+        N = len(weights)
+        if p == 1:
+            norm = weights.norm(p) * Ln.max()
+        elif p == float('inf'):
+            norm = torch.abs(weights).max() * Ln.norm(1)
+        else:
+            q = p / (p - 1)
+            norm = weights.norm(p) * Ln.norm(q)
+        if norm > 1.0 - eps:
+            weights *= (1 - eps) / norm
+        return weights

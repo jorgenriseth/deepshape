@@ -8,9 +8,8 @@ from ..common.derivatives import jacobian
 
 
 class SineLayer(SurfaceLayer):
-    def __init__(self, n, init_scale=0.0):
+    def __init__(self, n, init_scale=0.0, p=1):
         super().__init__()
-        # self.eps = torch.finfo(torch.float).eps
 
         # Number related to basis size
         self.n = n
@@ -27,6 +26,7 @@ class SineLayer(SurfaceLayer):
         # Vectors used function evaluation and projection.
         self.nvec = torch.arange(1, n+1, dtype=torch.float)
         self.L = self.lipschitz_vector()
+        self.p = p
         self.project()
 
     def to(self, device):
@@ -45,29 +45,28 @@ class SineLayer(SurfaceLayer):
 
         # Sine matrices
         S1 = sin(pi * z) / (self.nvec * pi)
-        S2 = sin(2 * pi * z)[:, (1, 0), :] / (self.nvec)
+        S2 = sin(2 * pi * z)[:, (1, 0), :] / (2 * self.nvec)
 
         # Cosine matrices
-        C1 = cos(pi * z) / (self.nvec * pi)
-        C2 = cos(2 * pi * z)[:, (1, 0), :] / (self.nvec)
+        C2 = cos(2 * pi * z)[:, (1, 0), :] / (2 * self.nvec)
 
         # Tensor product matrices.
         T2 = self.upsample(S1) * S2.repeat(1, 1, n)
         T3 = self.upsample(S1) * C2.repeat(1, 1, n)
 
         # Vector field evaluation.
-        self.B = torch.zeros(K, 2, 2*N, device=x.device)
+        B = torch.zeros(K, 2, 2*N, device=x.device)
 
-        self.B[:, 0, :n] = S1[:, 0, :]  # Type 1 x direction
-        self.B[:, 1, N:(N+n)] = S1[:, 1, :]  # Type 1  y-direction
+        B[:, 0, :n] = S1[:, 0, :]  # Type 1 x direction
+        B[:, 1, N:(N+n)] = S1[:, 1, :]  # Type 1  y-direction
 
-        self.B[:, 0, n:(n**2+n)] = T2[:, 0, :]  # Type 2 x-direction
-        self.B[:, 1, (N+n):(N + n**2 + n)] = T2[:, 1, :]  # Type 2 y-direction
+        B[:, 0, n:(n**2+n)] = T2[:, 0, :]  # Type 2 x-direction
+        B[:, 1, (N+n):(N + n**2 + n)] = T2[:, 1, :]  # Type 2 y-direction
 
-        self.B[:, 0, (n+n**2):N] = T3[:, 0, :]  # Type 3 x-direction
-        self.B[:, 1, (N+n+n**2):] = T3[:, 1, :]  # Type3 y-direction
+        B[:, 0, (n+n**2):N] = T3[:, 0, :]  # Type 3 x-direction
+        B[:, 1, (N+n+n**2):] = T3[:, 1, :]  # Type3 y-direction
 
-        return x + self.B @ self.weights
+        return x + B @ self.weights
 
     def derivative(self, x, h=None):
         """Assumes input on form (K, 2)"""
@@ -79,49 +78,46 @@ class SineLayer(SurfaceLayer):
         z = (x.view(K, 2, 1) * self.nvec)
 
         # Sine matrices
-        S1 = sin(pi * z) / (self.nvec * pi)
-        S2 = sin(2 * pi * z)[:, (1, 0), :] / (2 * self.nvec)
+        S1 = sin(pi * z)  / self.nvec
+        S2 = sin(2 * pi * z)[:, (1, 0), :]
 
         # Cosine matrices
-        C1 = cos(pi * z) / (self.nvec * pi)
-        C2 = cos(2 * pi * z)[:, (1, 0), :] / (2 * self.nvec)
+        C1 = cos(pi * z)
+        C2 = cos(2 * pi * z)[:, (1, 0), :]
 
         # Now for derivative matrices
-        T11 = self.upsample(self.nvec * pi * C1) * S2.repeat(1, 1, n)
-        T12 = self.upsample(S1) * (2 * pi * self.nvec * C2).repeat(1, 1, n)
+        T11 = self.upsample(C1) * (0.5 * (S2 / self.nvec)).repeat(1, 1, n)
+        T12 = self.upsample(S1) * C2.repeat(1, 1, n)
 
-        T21 = self.upsample(self.nvec * pi * C1) * C2.repeat(1, 1, n)
-        T22 = self.upsample(S1) * (-2 * pi * self.nvec * S2).repeat(1, 1, n)
+        T21 = self.upsample(C1) * (0.5 * (C2 / self.nvec)).repeat(1, 1, n)
+        T22 = self.upsample(S1) * (-S2).repeat(1, 1, n)
 
         # Create and fill a tensor with derivative outputs
-        self.D = torch.zeros(K, 2, 2, 2*N, device=x.device)
+        D = torch.zeros(K, 2, 2, 2*N, device=x.device)
 
-        self.D[:, 0, 0, :n] = self.nvec * pi * \
-            C1[:, 0, :]  # Type 1 x direction dx
-        self.D[:, 1, 1, N:(N+n)] = self.nvec * pi * \
-            C1[:, 1, :]  # Type 1  y-direction dy
+        D[:, 0, 0, :n] = C1[:, 0, :]  # Type 1 x direction dx
+        D[:, 1, 1, N:(N+n)] = C1[:, 1, :]  # Type 1  y-direction dy
 
-        self.D[:, 0, 0, n:(n + n**2)] = T11[:, 0, :]  # Type 2 x-direction dx
-        self.D[:, 0, 1, n:(n + n**2)] = T12[:, 0, :]  # Type 2 x-direction dy
-        self.D[:, 1, 1, (N+n):(N + n + n**2)] = T11[:,
-                                                    1, :]  # Type 2 y-direction dy
-        self.D[:, 1, 0, (N+n):(N + n + n**2)] = T12[:,
-                                                    1, :]  # Type 2 x-direction dy
+        D[:, 0, 0, n:(n + n**2)] = T11[:, 0, :]  # Type 2 x-direction dx
+        D[:, 0, 1, n:(n + n**2)] = T12[:, 0, :]  # Type 2 x-direction dy
+        D[:, 1, 1, (N+n):(N + n + n**2)] = T11[:, 1, :]  # Type 2 y-direction dy
+        D[:, 1, 0, (N+n):(N + n + n**2)] = T12[:, 1, :]  # Type 2 x-direction dy
 
-        self.D[:, 0, 0, (n+n**2):N] = T21[:, 0, :]  # Type 3 x-direction dx
-        self.D[:, 0, 1, (n+n**2):N] = T22[:, 0, :]  # Type 3 x-direction dy
+        D[:, 0, 0, (n+n**2):N] = T21[:, 0, :]  # Type 3 x-direction dx
+        D[:, 0, 1, (n+n**2):N] = T22[:, 0, :]  # Type 3 x-direction dy
 
-        self.D[:, 1, 1, (N+n+n**2):] = T21[:, 1, :]  # Type 3 y-direction dy
-        self.D[:, 1, 0, (N+n+n**2):] = T22[:, 1, :]  # Type 3 y-direction dx
+        D[:, 1, 1, (N+n+n**2):] = T21[:, 1, :]  # Type 3 y-direction dy
+        D[:, 1, 0, (N+n+n**2):] = T22[:, 1, :]  # Type 3 y-direction dx
 
-        return torch.eye(2, 2) + self.D @ self.weights
+        return torch.eye(2, 2) + D @ self.weights
 
     def lipschitz_vector(self):
         n, N = self.n, self.N
         upsampled = self.upsample(self.nvec.view(1, 1, -1)).squeeze()
         repeated = self.nvec.repeat(n)
-        T23 = (torch.sqrt(4 * upsampled**2 + repeated**2) /
-               (2 * upsampled * repeated)).repeat(2)
+        # T23 = (torch.sqrt(4 * upsampled**2 + repeated**2) /
+        #        (2 * upsampled * repeated)).repeat(2)
+        T23 = (1. / repeated).repeat(2)
 
         Li = torch.zeros(2*N)
         Li[:n] = 1.
@@ -135,5 +131,5 @@ class SineLayer(SurfaceLayer):
         with torch.no_grad():
             L = (torch.abs(self.weights) * self.L).sum()  # + self.eps
 
-            if L >= 1. - 1e-7:
+            if L >= 1. - 1e-6:
                 self.weights *= (1 - 1e-6) / L
