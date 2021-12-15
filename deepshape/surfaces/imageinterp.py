@@ -60,20 +60,25 @@ class ImageInterpolator:
 
 
 class SingleChannelImageSurface(Surface):
-    def __init__(self, img, centering=True, **kwargs):
+    def __init__(self, img, centering=True, scaling=False, **kwargs):
         if centering:
             self.center_x, self.center_y = self.find_center(img)
         else:
             self.center_x = 0.
             self.center_y = 0.
 
+        if scaling:
+            self.scale = image_area(img)
+        else:
+            self.scale = 1.
+
+        self.img = ImageInterpolator(img)
+
         super().__init__((
             lambda x: x[..., 0] - self.center_x,
             lambda x: x[..., 1] - self.center_y,
-            lambda x: self.img(x)
+            lambda x: self.img(x) / self.scale
         ))
-
-        self.img = ImageInterpolator(img)
 
     def find_center(self, im):
         nx, ny = im.shape[-2:]
@@ -91,3 +96,32 @@ class MultiChannelImageSurface(Surface):
             ImageInterpolator(img[1], mode, **kwargs),
             ImageInterpolator(img[2], mode, **kwargs)
         ))
+
+
+def eye_offset(N, k=0):
+    return torch.diag(torch.ones(N-abs(k)), diagonal=k)
+
+
+def finite_difference_matrix(N):
+    D = eye_offset(N, k=1) - eye_offset(N, k=-1)
+    D[0, :2] = torch.tensor((-2, 2))
+    D[-1, -2:] = torch.tensor((-2, 2))
+    return D
+
+
+def trapezian_weight_vector(N):
+    w = torch.ones(N, 1)
+    w[[0, -1]] = 0.5
+    return w
+
+
+def image_area(im):
+    N = im.shape[0]
+    h = 1 / (N - 1)
+    D = finite_difference_matrix(N)
+    w = trapezian_weight_vector(N)
+
+    fxh = (im @ D.T)
+    fyh = (D @ im)
+    
+    return float(0.5 * h * w.T @ (np.sqrt(4 * h**2 + fxh**2 + fyh**2)) @ w)

@@ -60,7 +60,7 @@ class PalaisLayer(DeepShapeLayer):
         S2 = sin(2 * pi * z)[:, (1, 0), :] / (self.nvec)
         
         # Cosine matrices
-        C1 = cos(pi * z) / (self.nvec * pi)
+        # C1 = cos(pi * z) / (self.nvec * pi)
         C2 = cos(2 * pi * z)[:, (1, 0), :] / (self.nvec) 
         
         # Tensor product matrices.
