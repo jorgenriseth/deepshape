@@ -1,7 +1,7 @@
 import torch
 from numpy import pi, sqrt
 
-from ..common import CurveLayer
+from ..common import CurveLayer, col_linspace
 
 
 class SineSeries(CurveLayer):
@@ -89,6 +89,57 @@ class PalaisLayer(SineSeries):
     def project(self, p=1):
         assert p == 1, f"PalaisLayer projection only defined for p=1, got {p}"
         super().project(p)
+
+
+def torch_clamp(x, lo, hi):
+    return torch.minimum(torch.tensor(hi), torch.maximum(x, torch.tensor(lo)))
+
+
+def create_projection_matrix(N):
+    P = torch.ones((N, N)) / N
+    return (0.5 * N / (N-1)) * (torch.eye(N) - P.fill_diagonal_(1 / N))
+
+
+def find_interval(x, N):
+    return torch_clamp((x * N).squeeze().long(), 0, N-1)
+
+
+class DerivativeLayer(CurveLayer):
+    def __init__(self, N, init_scale=2.0):
+        assert N > 1, "N needs to be >= 2"
+        super().__init__()
+        self.N = N
+        self.P = create_projection_matrix(N)
+        self.Xnodes = col_linspace(0, 1, N + 1)
+        self.Ynodes = torch.zeros((N, 1))
+        self.w = torch.nn.Parameter(
+            init_scale * torch.randn(N, 1, requires_grad=True)
+        )
+
+    # def g(w):
+    #     return torch.tanh(w)
+
+    # def g(w):
+    #     return torch.sin(w)
+
+    def g(self, w, a = 100.):
+        return torch.tanh(w) - torch.tanh(w / a)
+
+    def forward(self, x):
+        u = self.P @ self.g(self.w)
+        ind = find_interval(x, self.N)
+        y = torch.zeros((self.N, 1))
+        y[1:] = torch.cumsum(u[:-1], dim=0) / self.N
+        # self.Ynodes[1:] = torch.cumsum(u[:-1], dim=0) / self.N
+        return x + (y[ind] + u[ind] * (x - self.Xnodes[ind]))
+
+    def derivative(self, x, h=None):
+        u = self.P @ torch.tanh(self.w)
+        ind = find_interval(x, self.N)
+        return torch.maximum(u[ind], torch.tensor(1e-7))
+
+    def project(self, **kwargs):
+        pass
 
 
 class HatLayer(CurveLayer):

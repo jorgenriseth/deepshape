@@ -12,7 +12,7 @@ class ShapeDistanceBase(ABC):
         pass
 
     @abstractmethod
-    def get_determinant(self, network, X, h):
+    def get_determinant(self, network):
         pass
 
     def __init__(self, q, r, k, h=1e-4):
@@ -24,7 +24,7 @@ class ShapeDistanceBase(ABC):
         self.Q = q(self.X)
 
     def loss_func(self, U, Y):
-        return ((self.Q - torch.sqrt(U+1e-8) * self.r(Y))**2).sum() / self.k
+        return ((self.Q - torch.sqrt(U+1e-7) * self.r(Y))**2).sum() / self.k
 
     def get_last(self):
         return self.loss
@@ -33,12 +33,11 @@ class ShapeDistanceBase(ABC):
         self.X = self.X.to(device)
         return self
 
-    def __call__(self, network, h=None):
+    def __call__(self, network):
         Y = network(self.X)
-        U = self.get_determinant(network, self.X, h)
+        U = self.get_determinant(network)
 
         # Check for invalid derivatives. Retry projection, or raise error.
-        count = 0
         if U.min() < 0. or torch.isnan(U.min()):
             raise ValueError(
                 f"ProjectionError: derivative minimum is {float(U.min())}")
@@ -52,15 +51,15 @@ class CurveDistance(ShapeDistanceBase):
     def create_point_collection(self, k):
         return col_linspace(0, 1, k)
 
-    def get_determinant(self, network, X, h):
-        return network.derivative(self.X, h)
+    def get_determinant(self, network):
+        return network.derivative(self.X, self.h)
 
 
 class SurfaceDistance(ShapeDistanceBase):
     def create_point_collection(self, k):
         return torch_square_grid(k).reshape(-1, 2)
 
-    def get_determinant(self, network, X, h):
+    def get_determinant(self, network):
         return batch_determinant(network.derivative(self.X, self.h))
 
 

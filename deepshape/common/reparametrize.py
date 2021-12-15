@@ -3,12 +3,12 @@ import numpy as np
 from .utils import numpy_nans
 
 
-def reparametrize(network, loss, optimizer, iterations, logger, h=None, scheduler=None, projection_kwargs=None):
+def reparametrize(network, loss, optimizer, iterations, logger, scheduler=None, projection_kwargs=None):
     if projection_kwargs is None:
         projection_kwargs = {}
 
     if isinstance(optimizer, torch.optim.LBFGS):
-        return reparametrize_lbfgs(network, loss, optimizer, logger, h, scheduler, projection_kwargs)
+        return reparametrize_lbfgs(network, loss, optimizer, logger, scheduler, projection_kwargs)
 
     # Evaluate initial error
     logger.start()
@@ -20,7 +20,7 @@ def reparametrize(network, loss, optimizer, iterations, logger, h=None, schedule
         optimizer.zero_grad()
 
         # Compute current loss and gradients
-        l = loss(network, h)
+        l = loss(network)
         l.backward()
 
         # Update optimizer if using scheduler
@@ -38,7 +38,7 @@ def reparametrize(network, loss, optimizer, iterations, logger, h=None, schedule
     return error
 
 
-def reparametrize_lbfgs(network, loss, optimizer, logger, h=None, scheduler=None, projection_kwargs=None):
+def reparametrize_lbfgs(network, loss, optimizer, logger, scheduler=None, projection_kwargs=None):
     if projection_kwargs is None:
         projection_kwargs = {}
 
@@ -52,8 +52,8 @@ def reparametrize_lbfgs(network, loss, optimizer, logger, h=None, scheduler=None
     func_evals = 0
 
     global error
-    error = numpy_nans(iterations+1)
-    error[0] = float(loss(network, h))
+    error = numpy_nans(iterations+2)
+    error[0] = float(loss(network))
 
     it = [0]
 
@@ -73,7 +73,7 @@ def reparametrize_lbfgs(network, loss, optimizer, logger, h=None, scheduler=None
 
         # Compute loss, and perform a backward pass and gradient step
         network.project(**projection_kwargs)
-        l = loss(network, h)
+        l = loss(network)
         l.backward()
 
         # Update learning rate scheduler

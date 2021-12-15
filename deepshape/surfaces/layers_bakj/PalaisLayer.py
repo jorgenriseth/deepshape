@@ -129,7 +129,6 @@ class PalaisLayer(DeepShapeLayer):
 
     def lipschitz_vector(self):
         n, N = self.n, self.N 
-
         upsampled = self.upsample(self.nvec.view(1, 1, -1)).squeeze()
         repeated = self.nvec.repeat(n)
         T23 = (torch.sqrt(4 * upsampled**2 + repeated**2) / (2 * upsampled * repeated)).repeat(2)

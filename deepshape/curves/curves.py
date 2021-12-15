@@ -74,7 +74,6 @@ class SRVT:
 """ Below is a couple of example curves and diffeomorphisms for testing the 
 reparametrization algorithm."""
 
-
 class Circle(Curve):
     def __init__(self):
         super().__init__((
@@ -122,10 +121,16 @@ class Line(Curve):
         else:
             raise ValueError("invalid transform. Must be 'srvt' or 'qmap'")
 
+class Id(Diffeomorphism):
+    def __init__(self):
+        super().__init__(lambda x: x)
+
 
 class QuadDiff(Diffeomorphism):
-    def __init__(self):
-        super().__init__(lambda x: 0.9 * x**2 + 0.1 * x)
+    def __init__(self, b=0.1):
+        assert 0. < b < 2., "b should be between 0 and 2"
+        c = 1. - b
+        super().__init__(lambda x: c * x**2 + b * x)
 
 
 class LogStepDiff(Diffeomorphism):
