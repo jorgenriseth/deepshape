@@ -14,7 +14,7 @@ class CurveApprox(nn.Module):
         return (0.5 / h) * (self.forward(X + h) - self.forward(X - h) ) / h
     
 
-class  FourierApprox(CurveApprox):
+class FourierApprox(CurveApprox):
     def __init__(self, Xtr: torch.Tensor, y: torch.Tensor, N: int):
         super().__init__()
         self.N = N

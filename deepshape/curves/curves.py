@@ -1,10 +1,5 @@
-from .utils import col_linspace
-from torch.nn.functional import mse_loss
-from torch.nn import Module
-from torch._C import Value
 from ..common import central_differences
 import torch
-import torch.nn as nn
 import numpy as np
 from numpy import pi
 
@@ -38,13 +33,13 @@ class Curve:
         """ Finite difference approximation of curve velocity. """
         return torch.cat([central_differences(ci, X, h) for ci in self.C], dim=-1)
 
+    def compose_component(self, i, f):
+        return lambda x: self.C[i](f(x))
+
     def compose(self, f: Diffeomorphism):
         """ Composition from right with a map f: R -> R """
         # TODO: Allow genereal dimension curves.
-        return Curve((lambda x: ci(f(x)) for ci in self.C))
-
-    def subtract(self, c2):
-        return Curve((lambda x: self.C[i](x) - c2.C[i](x) for i in range(self.dim)))
+        return Curve((self.compose_component(i, f) for i in range(self.dim)))
 
 
 class Qmap:
@@ -52,7 +47,6 @@ class Qmap:
     # TODO: Add literary reference to Q-map
 
     def __init__(self, curve: Curve):
-        super().__init__()
         self.c = curve
 
     def __call__(self, X, h=1e-4):
@@ -68,12 +62,17 @@ class SRVT:
         self.c = curve
 
     def __call__(self, X, h=1e-4):
-        return self.c.derivative(X, h=h) / torch.sqrt(self.c.derivative(X, h=h).norm(dim=-1, keepdim=True))
+        u = self.c.derivative(X, h=h).norm(dim=-1, keepdim=True)
+        return torch.where(
+            torch.abs(u) < 1e-7,
+            torch.zeros((u.shape[0], self.c.dim)),
+            self.c.derivative(
+                X, h=h) / torch.sqrt(self.c.derivative(X, h=h).norm(dim=-1, keepdim=True))
+        )
 
 
 """ Below is a couple of example curves and diffeomorphisms for testing the 
 reparametrization algorithm."""
-
 
 class Circle(Curve):
     def __init__(self):
@@ -88,7 +87,7 @@ class Infinity(Curve):
         super().__init__((
             lambda x: torch.cos(2*pi*x),
             lambda x: torch.sin(4*pi*x)
-        )) / np.sqrt(3.)
+        ))
 
 
 class HalfCircle(Curve):
@@ -122,10 +121,16 @@ class Line(Curve):
         else:
             raise ValueError("invalid transform. Must be 'srvt' or 'qmap'")
 
+class Id(Diffeomorphism):
+    def __init__(self):
+        super().__init__(lambda x: x)
+
 
 class QuadDiff(Diffeomorphism):
-    def __init__(self):
-        super().__init__(lambda x: 0.9 * x**2 + 0.1 * x)
+    def __init__(self, b=0.1):
+        assert 0. < b < 2., "b should be between 0 and 2"
+        c = 1. - b
+        super().__init__(lambda x: c * x**2 + b * x)
 
 
 class LogStepDiff(Diffeomorphism):

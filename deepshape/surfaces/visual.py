@@ -3,9 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+from matplotlib.colors import Normalize
 from matplotlib.collections import LineCollection
 
-from .utils import antisymmetric_part, symmetric_part
+from ..common.utils import antisymmetric_part, symmetric_part
 
 
 def get_plot_data(f, k=32):
@@ -70,3 +72,26 @@ def plot_distance_matrix(D, *args, **kwargs):
     ax2.matshow(S, vmin=0, vmax=1, *args, **kwargs)
     ax3.matshow(np.abs(A), vmin=0, vmax=1, *args, **kwargs)
     plt.show()
+
+
+def plot_surface(f, ax=None, colornorm=None, k=32, camera=(30, -60), **kwargs):
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection="3d")
+    
+    coloring = get_plot_data(f.volume_factor, k=k).squeeze()
+    if colornorm is None:
+        colors = coloring / coloring.max()
+    else:
+        colors = colornorm(coloring)
+        
+    Z = get_plot_data(f, k=k)
+    
+    ax.plot_surface(*Z, shade=False, facecolors=cm.jet(colors), rstride=1, cstride=1, **kwargs)
+    ax.view_init(*camera)
+    return ax
+
+
+def get_common_colornorm(surfaces, k=128):
+    colors = [get_plot_data(fi.volume_factor, k=k).squeeze() for fi in surfaces]
+    return Normalize(vmin=min([ci.min() for ci in colors]), vmax=max([ci.max() for ci in colors]))
