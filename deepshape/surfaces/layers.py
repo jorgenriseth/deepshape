@@ -129,7 +129,7 @@ class SineLayer(SurfaceLayer):
 
     def project(self, method: str = "lipschitz", **kwargs):
         with torch.no_grad():
-            L = (torch.abs(self.weights) * self.L).sum()  # + self.eps
+            L = (torch.abs(self.weights * self.L)).sum()  # + self.eps
 
             if L >= 1. - 1e-6:
                 self.weights *= (1 - 1e-6) / L
