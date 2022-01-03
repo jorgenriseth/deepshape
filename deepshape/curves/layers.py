@@ -1,68 +1,52 @@
 import torch
 from numpy import pi, sqrt
 
-from ..common import CurveLayer, col_linspace
+from ..common import CurveLayer, col_linspace, torch_clamp
 
 
 class SineSeries(CurveLayer):
-    def __init__(self, N, init_scale=0.):
+    def __init__(self, N, init_scale=0., p=1):
         super().__init__()
         self.N = N
         self.nvec = torch.arange(1, N+1, dtype=torch.float)
         self.weights = torch.nn.Parameter(
             init_scale * torch.randn(N, 1, requires_grad=True)
         )
-        self.project(p=1)
+        self.p = p
+        self.project()
 
     def forward(self, x):
-        return x + (torch.sin(pi * self.nvec * x) / (pi * self.nvec)) @ self.weights
+        return x + ((torch.sin(pi * self.nvec * x) / self.nvec) @ self.weights) / pi
 
     def derivative(self, x, h=None):
         return 1. + torch.cos(pi * self.nvec * x) @ self.weights
 
-    def project(self, p=1):
+    def project(self):
         with torch.no_grad():
-            if p == 1:
-                norm = self.weights.norm(p)
-            elif p == float('inf'):
-                norm = torch.abs(self.weights).max() * self.N
-            elif p == 2:
-                norm = self.weights.norm(p) * sqrt(self.N)
-            else:
-                q = p / (p - 1)
-                norm = self.weights.norm(p) * torch.ones(self.N).norm(q)
-            if norm > 1.0 - 1e-4:
-                self.weights *= (1 - 1e-4) / norm
+            # Possible since lipschitz-vector is 1 everywhere.
+            norm = self.weights.norm(1)
+            if norm > 1.0 - 1e-6:
+                self.weights *= (1 - 1e-6) / norm
 
     def to(self, device):
         self.nvec = self.nvec.to(device)
         return self
 
 
-# TODO: Consider removal, as this is a worse version of its parent
-# TODO: Found error, might explain poor performance
 class UnscaledSineSeries(SineSeries):
+    # TODO: Consider removal, as this is a worse version of its parent
+    # TODO: Found error, might explain poor performance
     def forward(self, x):
-        return x + (torch.sin(pi * self.nvec * x)) @ self.weights
+        return x + torch.sin(pi * self.nvec * x) @ self.weights
 
     def derivative(self, x, h=None):
         return 1. + pi * (self.nvec * torch.cos(pi * self.nvec * x)) @ self.weights
 
     def project(self, p=1):
         with torch.no_grad():
-            if p == 1:
-                norm = (self.weights * pi * self.nvec).norm(p)
-            elif p == float('inf'):
-                norm = torch.abs(self.weights).max() * pi * \
-                    (0.5 * self.N * (self.N + 1))
-            elif p == 2:
-                norm = (self.weights.norm(p)
-                        * pi * sqrt(self.N * (self.N + 1) * (2 * self.N + 1) / 6))
-            else:
-                q = p / (p - 1)
-                norm = self.weights.norm(p) * torch.ones(self.nvec).norm(q)
-            if norm > 1.0 - 1e-4:
-                self.weights *= (1 - 1e-4) / norm
+            norm = pi * (self.weights * self.nvec).norm(1)
+            if norm > 1.0 - 1e-6:
+                self.weights *= (1 - 1e-6) / norm
 
 
 class PalaisLayer(SineSeries):
@@ -75,9 +59,9 @@ class PalaisLayer(SineSeries):
 
     def forward(self, x):
         y = torch.cat([
-            torch.sin(pi * self.nvec * x) / (pi * self.nvec),
-            (torch.cos(2*pi * self.nvec * x) - 1.) / (2*pi * self.nvec)
-        ], axis=-1)
+            torch.sin(pi * self.nvec * x) / self.nvec,
+            ((torch.cos(2*pi * self.nvec * x) - 1.) / self.nvec) * 0.5
+        ], axis=-1) / pi
         return x + y @ self.weights
 
     def derivative(self, x, h=None):
@@ -85,24 +69,7 @@ class PalaisLayer(SineSeries):
             torch.cos(2*pi * self.nvec * x),
             -torch.sin(2*pi * self.nvec * x)
         ], axis=-1)
-        return 1 + u @ self.weights
-
-    def project(self, p=1):
-        assert p == 1, f"PalaisLayer projection only defined for p=1, got {p}"
-        super().project(p)
-
-
-def torch_clamp(x, lo, hi):
-    return torch.minimum(torch.tensor(hi), torch.maximum(x, torch.tensor(lo)))
-
-
-def create_projection_matrix(N):
-    P = torch.ones((N, N)) / N
-    return (0.5 * N / (N-1)) * (torch.eye(N) - P.fill_diagonal_(1 / N))
-
-
-def find_interval(x, N):
-    return torch_clamp((x * N).squeeze().long(), 0, N-1)
+        return 1. + u @ self.weights
 
 
 class DerivativeLayer(CurveLayer):
@@ -123,7 +90,7 @@ class DerivativeLayer(CurveLayer):
     # def g(w):
     #     return torch.sin(w)
 
-    def g(self, w, a = 100.):
+    def g(self, w, a=100.):
         return torch.tanh(w) - torch.tanh(w / a)
 
     def forward(self, x):
@@ -131,7 +98,6 @@ class DerivativeLayer(CurveLayer):
         ind = find_interval(x, self.N)
         y = torch.zeros((self.N, 1))
         y[1:] = torch.cumsum(u[:-1], dim=0) / self.N
-        # self.Ynodes[1:] = torch.cumsum(u[:-1], dim=0) / self.N
         return x + (y[ind] + u[ind] * (x - self.Xnodes[ind]))
 
     def derivative(self, x, h=None):
@@ -141,6 +107,15 @@ class DerivativeLayer(CurveLayer):
 
     def project(self, **kwargs):
         pass
+
+
+def create_projection_matrix(N):
+    P = torch.ones((N, N)) / N
+    return (0.5 * N / (N-1)) * (torch.eye(N) - P.fill_diagonal_(1 / N))
+
+
+def find_interval(x, N):
+    return torch_clamp((x * N).squeeze().long(), 0, N-1)
 
 
 class HatLayer(CurveLayer):

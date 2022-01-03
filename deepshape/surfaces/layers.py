@@ -8,9 +8,8 @@ from ..common.derivatives import jacobian
 
 
 class SineSeries(SurfaceLayer):
-    def __init__(self, n, init_scale=0.0):
+    def __init__(self, n, init_scale=0.0, p=1):
         super().__init__()
-        # self.eps = torch.finfo(torch.float).eps
 
         # Number related to basis size
         self.n = n
@@ -27,6 +26,7 @@ class SineSeries(SurfaceLayer):
         # Vectors used function evaluation and projection.
         self.nvec = torch.arange(1, n+1, dtype=torch.float)
         self.L = self.lipschitz_vector()
+        self.p = p
         self.project()
 
     def to(self, device):
@@ -45,10 +45,10 @@ class SineSeries(SurfaceLayer):
 
         # Sine matrices
         S1 = sin(pi * z) / (self.nvec * pi)
-        S2 = sin((2.*pi) * z)[:, (1, 0), :] / (self.nvec)
+        S2 = sin(2 * pi * z)[:, (1, 0), :] / (2 * self.nvec)
 
         # Cosine matrices
-        C2 = cos((2.*pi) * z)[:, (1, 0), :] / (self.nvec)
+        C2 = cos(2 * pi * z)[:, (1, 0), :] / (2 * self.nvec)
 
         # Tensor product matrices.
         T2 = self.upsample(S1) * S2.repeat(1, 1, n)
@@ -78,18 +78,18 @@ class SineSeries(SurfaceLayer):
         z = (x.view(K, 2, 1) * self.nvec)
 
         # Sine matrices
-        S1 = sin(pi * z) / self.nvec
-        S2 = sin((2*pi) * z)[:, (1, 0), :]
+        S1 = sin(pi * z)  / self.nvec
+        S2 = sin(2 * pi * z)[:, (1, 0), :]
 
         # Cosine matrices
         C1 = cos(pi * z)
-        C2 = cos((2*pi) * z)[:, (1, 0), :]
+        C2 = cos(2 * pi * z)[:, (1, 0), :]
 
         # Now for derivative matrices
-        T11 = self.upsample(C1) * (S2 / (self.nvec)).repeat(1, 1, n)
-        T12 = self.upsample(S1) * (C2).repeat(1, 1, n)
+        T11 = self.upsample(C1) * (0.5 * (S2 / self.nvec)).repeat(1, 1, n)
+        T12 = self.upsample(S1) * C2.repeat(1, 1, n)
 
-        T21 = self.upsample(C1) * (C2 / (self.nvec)).repeat(1, 1, n)
+        T21 = self.upsample(C1) * (0.5 * (C2 / self.nvec)).repeat(1, 1, n)
         T22 = self.upsample(S1) * (-S2).repeat(1, 1, n)
 
         # Create and fill a tensor with derivative outputs
