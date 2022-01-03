@@ -18,7 +18,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_layers", default=5, type=int)
     parser.add_argument("--num_funcs", default=5, type=int)
     parser.add_argument("--k", default=256, type=int)
-    parser.add_argument("--show", default=False, type=bool)
+    parser.add_argument("--show", action="store_true")
     args = parser.parse_args()
     fig_path, c0, c1, diffeo, transform, num_layers, num_funcs, projection_kwargs, logger = reparametrization_parser(args)
 

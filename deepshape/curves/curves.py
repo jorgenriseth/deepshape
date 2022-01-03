@@ -107,7 +107,7 @@ class HalfCircle(Curve):
 
 
 class Line(Curve):
-    def __init__(self, transform=""):
+    def __init__(self, transform="qmap"):
         if transform.lower() == "qmap":
             super().__init__((
                 lambda x: torch.zeros_like(x),

@@ -121,9 +121,13 @@ def reparametrization_parser(args):
 
 
 def create_savename(args):
-    figpath = f"{args.fig_path}/curves-{args.transform}-{args.curve0}-\
-            {args.curve1}-{args.diffeomorphism}-{args.num_layers}-\
-            {args.num_funcs}-{args.p}"
+    if len(list(args.diffeomorphism)) > 1:
+        diffstring = '_'.join(args.diffeomorphism)
+    else:
+        diffstring = args.diffeomorphism
+    figpath = (f"{args.fig_path}/curves-{args.transform}-{args.curve0}-"
+               f"{args.curve1}-{diffstring}-{args.num_layers}-"
+               f"{args.num_funcs}-{args.p}")
     figpath = Path(figpath)
     figpath.mkdir(exist_ok=True)
     return figpath

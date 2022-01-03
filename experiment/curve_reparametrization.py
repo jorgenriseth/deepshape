@@ -19,7 +19,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_layers", default=5, type=int)
     parser.add_argument("--num_funcs", default=5, type=int)
     parser.add_argument("--k", default=256, type=int)
-    parser.add_argument("--show", type=bool, default=False)
+    parser.add_argument("--show", action='store_true')
     args = parser.parse_args()
 
     fig_path, c0, c1, diffeo, transform, num_layers, num_funcs, projection_kwargs, logger = reparametrization_parser(args)
@@ -29,12 +29,12 @@ if __name__ == "__main__":
 
     # Plot curves and their transforms
     fig, ax = plt.subplots(1, 1)
-    plot_curve(c0, dotpoints=21, ax=ax)
+    plot_curve(c0, npoints=501, dotpoints=41, ax=ax)
     ax.set_aspect("equal")
     plt.savefig(fig_path / "curve0.png", bbox_inches="tight")
 
     fig, ax = plt.subplots(1, 1)
-    plot_curve(c1, dotpoints=21, ax=ax)
+    plot_curve(c1, npoints=501, dotpoints=41, ax=ax)
     ax.set_aspect("equal")
     plt.savefig(fig_path / "curve1.png", bbox_inches="tight")
 
