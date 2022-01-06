@@ -77,8 +77,8 @@ reparametrization algorithm."""
 class Circle(Curve):
     def __init__(self):
         super().__init__((
-            lambda x: torch.cos(2*pi*x),
-            lambda x: torch.sin(2*pi*x)
+            lambda x: torch.cos(2*pi*x), #, / (2. * pi),
+            lambda x: torch.sin(2*pi*x) #/ (2. * pi)
         ))
 
 
@@ -94,8 +94,8 @@ class HalfCircle(Curve):
     def __init__(self, transform="qmap"):
         if transform.lower() == "qmap":
             super().__init__((
-                lambda x: torch.cos(pi * x) / np.cbrt(pi),
-                lambda x: torch.sin(pi * x) / np.cbrt(pi)
+                lambda x: torch.cos(pi * x),# / (pi), #/ np.cbrt(pi),
+                lambda x: torch.sin(pi * x)# / (pi) #/ np.cbrt(pi)
             ))
         elif transform.lower() == "srvt":
             super().__init__((
@@ -144,3 +144,13 @@ class LogStepDiff(Diffeomorphism):
 class OptimalCircleLine(Diffeomorphism):
     def __init__(self):
         super().__init__(lambda x: x - 0.5 * torch.sin(2*pi*x) / pi)
+
+
+class EdgeCase1(Diffeomorphism):
+    def __init__(self):
+        super().__init__(lambda x: 2. * x * (x < 0.5) + 1. * (x >= 0.5))
+
+ 
+class EdgeCase2(Diffeomorphism):
+    def __init__(self):
+        super().__init__(lambda x: 0.5 * x * (x < 1.) + 1. * (x >= 1.))

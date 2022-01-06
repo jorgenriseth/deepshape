@@ -17,7 +17,7 @@ class Diffeomorphism:
     def compose(self, f: 'Diffeomorphism'):
         """ Composition from the right, of diffeomorphism class mapping 
         tensors (K, 2) -> (K, 2)"""
-        return Surface((
+        return Diffeomorphism((
             lambda x: self.S[0](f(x)),
             lambda x: self.S[1](f(x)),
         ))
