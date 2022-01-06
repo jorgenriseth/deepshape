@@ -1,16 +1,16 @@
 import argparse
-from pathlib import Path
 import matplotlib.pyplot as plt
 from deepshape.curves import *
-from curve_utils import curve_reparametrization, reparametrization_parser
+from utils_common import reparametrization_parser
+from curve_utils import curve_reparametrization
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Reparametrize and Plot Curves")
     parser.add_argument("--fig_path", default="../figures")
-    parser.add_argument("--curve0", default=None)
-    parser.add_argument("--curve1", default="Circle")
+    parser.add_argument("--shape0", default=None)
+    parser.add_argument("--shape1", default="Circle")
     parser.add_argument("--diffeomorphism", default="LogStepDiff", nargs="*")
     parser.add_argument("--p", default=1, type=int,
                         help="Projection Argument, p-lipshitz")
@@ -22,7 +22,8 @@ if __name__ == "__main__":
     parser.add_argument("--show", action='store_true')
     args = parser.parse_args()
 
-    fig_path, c0, c1, diffeo, transform, num_layers, num_funcs, projection_kwargs, logger = reparametrization_parser(args)
+    fig_path, c0, c1, diffeo, transform, num_layers, num_funcs, projection_kwargs, logger = reparametrization_parser(
+        "curves", args)
 
     error, RN = curve_reparametrization(
         c0, c1, num_layers, num_funcs, transform, args.k, logger=logger)
@@ -38,7 +39,7 @@ if __name__ == "__main__":
     ax.set_aspect("equal")
     plt.savefig(fig_path / "curve1.png", bbox_inches="tight")
 
-    plt.figure(figsize=(12, 4))
+    plt.figure(figsize=(8, 4))
     plt.semilogy(error)
     plt.savefig(fig_path / "error-iter-convergence.png", bbox_inches="tight")
 
@@ -48,10 +49,10 @@ if __name__ == "__main__":
     plot_diffeomorphism(diffeo, ax=ax, c="k", lw=0.8, ls="--")
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
-    plt.savefig(fig_path / "diffeomorphism-matching.png", bbox_inches="tight") 
+    plt.savefig(fig_path / "diffeomorphism-matching.png", bbox_inches="tight")
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 4))
-    plot_diffeomorphism(RN.derivative, ax=ax) 
+    plot_diffeomorphism(RN.derivative, ax=ax)
     plot_derivative(diffeo, ax=ax, c="k", lw=0.8, ls="--")
     ax.set_xlim(0, 1)
     plt.savefig(fig_path / "derivatives-matching.png", bbox_inches="tight")
@@ -72,4 +73,3 @@ if __name__ == "__main__":
 
     if args.show:
         plt.show()
-
