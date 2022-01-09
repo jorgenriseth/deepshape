@@ -19,3 +19,8 @@ where pip may be installed through conda.
 See the following notebooks for example usage.
 1. [Curve Reparametrization](example-notebooks/curves-reparametrization.ipynb)
 2. [Surface Reparametrization](example-notebooks/surfaces-reparametrization.ipynb)
+
+
+## Datasets
+ECG Heartbeats (Kaggle): https://www.kaggle.com/shayanfazeli/heartbeat
+

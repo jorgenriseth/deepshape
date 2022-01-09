@@ -45,10 +45,10 @@ class SineSeries(SurfaceLayer):
 
         # Sine matrices
         S1 = sin(pi * z) / (self.nvec * pi)
-        S2 = sin(2 * pi * z)[:, (1, 0), :] / (2 * self.nvec)
+        S2 = sin(2 * pi * z)[:, (1, 0), :] / (self.nvec)
 
         # Cosine matrices
-        C2 = cos(2 * pi * z)[:, (1, 0), :] / (2 * self.nvec)
+        C2 = cos(2 * pi * z)[:, (1, 0), :] / (self.nvec)
 
         # Tensor product matrices.
         T2 = self.upsample(S1) * S2.repeat(1, 1, n)
@@ -86,10 +86,10 @@ class SineSeries(SurfaceLayer):
         C2 = cos(2 * pi * z)[:, (1, 0), :]
 
         # Now for derivative matrices
-        T11 = self.upsample(C1) * (0.5 * (S2 / self.nvec)).repeat(1, 1, n)
+        T11 = self.upsample(C1) * ( (S2 / self.nvec)).repeat(1, 1, n)
         T12 = self.upsample(S1) * C2.repeat(1, 1, n)
 
-        T21 = self.upsample(C1) * (0.5 * (C2 / self.nvec)).repeat(1, 1, n)
+        T21 = self.upsample(C1) * ((C2 / self.nvec)).repeat(1, 1, n)
         T22 = self.upsample(S1) * (-S2).repeat(1, 1, n)
 
         # Create and fill a tensor with derivative outputs
@@ -118,6 +118,7 @@ class SineSeries(SurfaceLayer):
         # T23 = (torch.sqrt(4 * upsampled**2 + repeated**2) /
         #        (2 * upsampled * repeated)).repeat(2)
         T23 = (1. / repeated).repeat(2)
+        # T23 = torch.maximum(1. / upsampled, )
 
         Li = torch.ones(2*N)
         # Li[:n] = 1.

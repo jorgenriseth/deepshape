@@ -16,7 +16,7 @@ class SineSeries(CurveLayer):
         self.project()
 
     def forward(self, x):
-        return x + ((torch.sin(pi * self.nvec * x) / self.nvec) @ self.weights) / pi
+        return x + ((torch.sin(pi * self.nvec * x) / (pi * self.nvec)) @ self.weights)
 
     def derivative(self, x, h=None):
         return 1. + torch.cos(pi * self.nvec * x) @ self.weights
@@ -24,7 +24,7 @@ class SineSeries(CurveLayer):
     def project(self):
         with torch.no_grad():
             # Possible since lipschitz-vector is 1 everywhere.
-            norm = self.weights.norm(1)
+            norm = self.weights.norm(p=1)
             if norm > 1.0 - 1e-6:
                 self.weights *= (1 - 1e-6) / norm
 
