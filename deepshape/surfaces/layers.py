@@ -7,7 +7,7 @@ from ..common.LayerBase import SurfaceLayer
 from ..common.derivatives import jacobian
 
 
-class SineSeries(SurfaceLayer):
+class SineLayer(SurfaceLayer):
     def __init__(self, n, init_scale=0.0, p=1):
         super().__init__()
 
@@ -136,7 +136,111 @@ class SineSeries(SurfaceLayer):
                 self.weights *= (1 - 1e-6) / L
 
 
-class HalfScaledSineSeries(SineSeries):
+class VanishingSeries(SurfaceLayer):
+    def __init__(self, n, init_scale=0.0, p=1):
+        super().__init__()
+
+        # Number related to basis size
+        self.n = n
+        self.N = n ** 2
+
+        # Create weight vector
+        self.weights = Parameter(
+            init_scale * torch.randn(self.N, 2, requires_grad=True)
+        )
+
+        # Vectors used function evaluation and projection.
+        self.nvec = torch.arange(1, n + 1, dtype=torch.float)
+        self.L = self.lipschitz_vector()
+        self.p = p
+        self.project()
+
+    def to(self, device):
+        super().to(device)
+        self.device = device
+        self.nvec = self.nvec.to(device)
+        self.L = self.L.to(device)
+        return self
+
+    def forward(self, x):
+        """Assumes input on form (K, 2)"""
+        K = x.shape[0]
+        n, N = self.n, self.N
+
+        upsampled = self.nvec.repeat_interleave(n)
+        repeated = self.nvec.repeat(1, n)
+
+        # Eval and use
+        z = pi * x.view(-1, 2, 1) * self.nvec
+        s = torch.sin(z)
+        s = s[:, 0].repeat(1, n) * s[:, 1].repeat_interleave(n, -1)
+        s /= pi * repeated * upsampled
+        return x + s @ self.weights
+
+    def derivative(self, x, h=None):
+        """Assumes input on form (K, 2)"""
+        if h is not None:
+            return jacobian(self, x, h)
+
+        """Assumes input on form (K, 2)"""
+        K = x.shape[0]
+        n, N = self.n, self.N
+
+        upsampled = self.nvec.repeat_interleave(n)
+        repeated = self.nvec.repeat(1, n)
+
+        # Sine matrices
+        S1 = sin(pi * z) / (self.nvec * pi)
+        S2 = sin((2*pi) * z)[:, (1, 0), :]
+
+        # Cosine matrices
+        C1 = cos(pi * z)
+        C2 = cos((2*pi) * z)[:, (1, 0), :]
+
+        # Now for derivative matrices
+        T11 = self.upsample(C1) * S2.repeat(1, 1, n)
+        T12 = self.upsample(S1) * ((2*pi) * self.nvec * C2).repeat(1, 1, n)
+
+        T21 = self.upsample(C1) * C2.repeat(1, 1, n)
+        T22 = self.upsample(S1) * (-(2*pi) * self.nvec * S2).repeat(1, 1, n)
+
+        # Create and fill a tensor with derivative outputs
+        D = torch.zeros(K, 2, 2, 2*N, device=x.device)
+
+        D[:, 0, 0, :n] = C1[:, 0, :]            # Type 1 x direction dx
+        D[:, 1, 1, N:(N+n)] = C1[:, 1, :]       # Type 1  y-direction dy
+
+        D[:, 0, 0, n:(n + n**2)] = T11[:, 0, :]  # Type 2 x-direction dx
+        D[:, 0, 1, n:(n + n**2)] = T12[:, 0, :]  # Type 2 x-direction dy
+
+        D[:, 1, 1, (N+n):(N + n + n**2)] = T11[:, 1, :]  # Type 2 y-direction dy
+        D[:, 1, 0, (N+n):(N + n + n**2)] = T12[:, 1, :]  # Type 2 x-direction dy
+
+        D[:, 0, 0, (n+n**2):N] = T21[:, 0, :]  # Type 3 x-direction dx
+        D[:, 0, 1, (n+n**2):N] = T22[:, 0, :]  # Type 3 x-direction dy
+
+        D[:, 1, 1, (N+n+n**2):] = T21[:, 1, :]  # Type 3 y-direction dy
+        D[:, 1, 0, (N+n+n**2):] = T22[:, 1, :]  # Type 3 y-direction dx
+
+        return torch.eye(2, 2) + D @ self.weights
+
+    def lipschitz_vector(self):
+        #         return torch.ones(2, self.N)
+        n, N = self.n, self.N
+        upsampled = self.nvec.repeat_interleave(n)
+        repeated = self.nvec.repeat(1, n)
+        Li = torch.sqrt(upsampled ** 2 + repeated ** 2).repeat((2, 1))
+        return 1 / Li.transpose(0, 1)
+
+    def project(self, method: str = "lipschitz", **kwargs):
+        with torch.no_grad():
+            L = (torch.abs(self.weights * self.L)).sum()  # + self.eps
+
+            if L >= 1. - 1e-6:
+                self.weights *= (1 - 1e-6) / L
+
+
+class HalfScaledSineSeries(SineLayer):
     def forward(self, x):
         """Assumes input on form (K, 2)"""
         # Possible alternative: K = np.prod(x.shape[:-1])
