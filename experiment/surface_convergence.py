@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     num_layers_list = list(range(1, 15))
     num_functions_list = list(range(1, 15))
-    subset = [1, 3, 5, 7, 10, 15]    
+    subset = [1, 3, 5, 7, 10, 15]
 
     # Testset
     # num_layers_list = list(range(1, 3))
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 1, figsize=(14, 4))
     plot_depth_convergence(d, ax, subset=subset)
     ax.legend()
-    ax.set_xlabel("# Layers")
+    ax.set_xlabel("$L$")
     plt.legend(loc=3)
     plt.savefig(fig_path / "convergence-depth.pdf", bbox_inches="tight")
 
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 1, figsize=(14, 4))
     plot_width_convergence(d, ax, subset=subset)
     ax.legend()
-    ax.set_xlabel("# Functions Per Layer")
+    ax.set_xlabel("$M$")
     plt.legend(loc=3)
     plt.savefig(fig_path / "convergence-width.pdf", bbox_inches="tight")
     if args.show:
