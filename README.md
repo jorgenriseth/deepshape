@@ -1,4 +1,7 @@
 # deepshape
+
+** NB: This repository will undergo changes within the next few weeks, to make the code for  the coming publication as easily accessible as possible **
+
 This repository contains source code for a deep reparametrization algorithm for reparametrization of parametric curves and surfaces. It was created as part of my masters thesis in Industrial Mathemetics at NTNU.
 
 ## Setup
