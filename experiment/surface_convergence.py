@@ -1,4 +1,5 @@
 import argparse
+from cProfile import label
 import matplotlib.pyplot as plt
 from deepshape.surfaces import *
 from utils_common import *
@@ -31,26 +32,26 @@ if __name__ == "__main__":
     subset = [1, 3, 5, 7, 10, 15]
 
     # Testset
-    # num_layers_list = list(range(1, 3))
-    # num_functions_list = list(range(1, 3))
+    # num_layers_list = list(range(1, 4))
+    # num_functions_list = list(range(1, 4))
     # subset = [1, 2, 3]
 
     d = create_convergence_dict(f0, f1, num_layers_list, num_functions_list, transform=transform, projection_kwargs=projection_kwargs, logger=logger)
 
-    fig, ax = plt.subplots(1, 1, figsize=(14, 4))
-    plot_depth_convergence(d, ax, subset=subset)
+    fig, ax = plt.subplots(1, 1, figsize=(8, 4))
+    plot_depth_convergence(d, ax, subset=subset, label_identifier="N")
     ax.legend()
-    ax.set_xlabel("$L$")
+    ax.set_xlabel("$L$", fontsize=18)
     plt.legend(loc=3)
-    plt.savefig(fig_path / "convergence-depth.pdf", bbox_inches="tight")
+    plt.savefig(fig_path / "surface-depth.pdf", bbox_inches="tight")
 
 
-    fig, ax = plt.subplots(1, 1, figsize=(14, 4))
+    fig, ax = plt.subplots(1, 1, figsize=(8, 4))
     plot_width_convergence(d, ax, subset=subset)
     ax.legend()
-    ax.set_xlabel("$M$")
+    ax.set_xlabel("$N$", fontsize=18)
     plt.legend(loc=3)
-    plt.savefig(fig_path / "convergence-width.pdf", bbox_inches="tight")
+    plt.savefig(fig_path / "surface-width.pdf", bbox_inches="tight")
     if args.show:
         plt.show()
 

@@ -1,3 +1,4 @@
+import logging
 from deepshape.surfaces import *
 
 
@@ -13,7 +14,7 @@ def surface_reparametrization(c1, c2, num_layers, num_functions, transform="qmap
         raise ValueError("Transform should be 'qmap' or 'srvt'")
 
     RN = SurfaceReparametrizer(
-        [SineSeries(num_functions) for _ in range(num_layers)]
+        [SineLayer(num_functions) for _ in range(num_layers)]
     )
     optimizer = torch.optim.LBFGS(RN.parameters(), max_iter=200,
                                   line_search_fn="strong_wolfe")

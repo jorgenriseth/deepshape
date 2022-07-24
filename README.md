@@ -23,4 +23,3 @@ See the following notebooks for example usage.
 
 ## Datasets
 ECG Heartbeats (Kaggle): https://www.kaggle.com/shayanfazeli/heartbeat
-
