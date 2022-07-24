@@ -13,6 +13,8 @@ class ShapeReparamBase(Module, ABC):
             assert isinstance(
                 layer, DeepShapeLayer), "Layers must inherit DeepShapeLayer"
 
+        self.project()
+
     def forward(self, x):
         for layer in self.layerlist:
             x = layer(x)
@@ -53,4 +55,3 @@ class SurfaceReparametrizer(ShapeReparamBase):
             Df = layer.derivative(x, h) @ Df
             x = layer(x)
         return Df
-

@@ -34,5 +34,3 @@ def create_convergence_dict(c0, c1, num_layer_list, num_function_list, parser=No
         }
         for i in num_layer_list
     }
-
-

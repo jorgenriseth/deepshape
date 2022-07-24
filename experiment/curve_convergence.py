@@ -5,6 +5,7 @@ from deepshape.curves import *
 from utils_common import *
 from curve_utils import *
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Reparametrize and Plot Curves")
@@ -29,18 +30,18 @@ if __name__ == "__main__":
     subset = [1, 3, 5, 7, 10, 15]
     d = create_convergence_dict(c0, c1, num_layers_list, num_functions_list, transform=transform, projection_kwargs=projection_kwargs, logger=logger)
 
-    fig, ax = plt.subplots(1, 1, figsize=(14, 4))
+    fig, ax = plt.subplots(1, 1, figsize=(8, 4))# figsize=(14, 4))
     plot_depth_convergence(d, ax, subset=subset)
     ax.legend()
-    ax.set_xlabel("# Layers")
-    plt.savefig(fig_path / "convergence-depth.pdf", bbox_inches="tight")
+    ax.set_xlabel("$L$", fontsize=18)
+    plt.savefig(fig_path / "curve-depth.pdf", bbox_inches="tight")
 
-    fig, ax = plt.subplots(1, 1, figsize=(14, 4))
+    fig, ax = plt.subplots(1, 1, figsize=(8, 4))# figsize=(14, 4))
 
     plot_width_convergence(d, ax, subset=subset)
     ax.legend()
-    ax.set_xlabel("# Functions Per Layer")
-    plt.savefig(fig_path / "convergence-width.pdf", bbox_inches="tight")
+    ax.set_xlabel("$M$", fontsize=18)
+    plt.savefig(fig_path / "curve-width.pdf", bbox_inches="tight")
 
     if args.show:
         plt.show()

@@ -53,12 +53,19 @@ def reparametrize_lbfgs(network, loss, optimizer, logger, scheduler=None, projec
 
     global error
     error = numpy_nans(iterations+2)
-    error[0] = float(loss(network))
+    # error[0] = float(loss(network))
     it = [0]
 
     def closure():
         global error
         global func_evals
+
+        # Only log error after finishing line search
+        if optimizer.state[optimizer._params[0]]["func_evals"] > func_evals:
+            func_evals = optimizer.state[optimizer._params[0]]["func_evals"]
+            logger.log(it=it[0], value=loss.get_last())
+            it[0] += 1
+            error[it[0]] = loss.get_last()
 
         # Set gradient buffers to zero.
         optimizer.zero_grad()
@@ -72,19 +79,12 @@ def reparametrize_lbfgs(network, loss, optimizer, logger, scheduler=None, projec
         if scheduler is not None:
             scheduler.step(l)
 
-        # Only log error after finishing line search
-        if optimizer.state[optimizer._params[0]]["func_evals"] > func_evals:
-            func_evals = optimizer.state[optimizer._params[0]]["func_evals"]
-            logger.log(it=it[0], value=loss.get_last())
-            it[0] += 1
-            error[it[0]] = loss.get_last()
-
         return l
 
     optimizer.step(closure)
     network.project(**projection_kwargs)
     logger.log(it=it[0], value=loss.get_last())
-    error[it[0]+1] = loss.get_last()
+    error[it[0]] = loss.get_last()
     logger.stop()
 
     return error[~np.isnan(error)]
